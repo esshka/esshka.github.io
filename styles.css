@@ -176,6 +176,24 @@ body {
   border-color: var(--primary);
 }
 
+/* Social Links */
+.social-links {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  animation: fadeInUp 1s ease-out 0.5s backwards;
+}
+
+.social-links a {
+  color: var(--text-secondary);
+  transition: color 0.3s, transform 0.3s;
+}
+
+.social-links a:hover {
+  color: var(--primary);
+  transform: scale(1.2);
+}
+
 /* CTA Section */
 .cta {
   text-align: center;
@@ -211,6 +229,7 @@ body {
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -218,8 +237,15 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
 }
 
 /* Responsive */
@@ -227,11 +253,11 @@ body {
   .content {
     padding: 1rem;
   }
-  
+
   .hero {
     padding: 2rem 1.5rem;
   }
-  
+
   .expertise-grid {
     grid-template-columns: 1fr;
   }
