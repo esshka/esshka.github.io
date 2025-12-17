@@ -6,16 +6,19 @@
   RELEVANT FILES: styles.css, webgl.js, about.txt
 -->
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Eugene - Principal Software Engineer & Architect. 20+ years experience in ML/AI, fintech, and distributed systems.">
+  <meta name="description"
+    content="Eugene - Principal Software Engineer & Architect. 20+ years experience in ML/AI, fintech, and distributed systems.">
   <title>Eugene | Principal Software Engineer & Architect</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
   <!-- WebGL Canvas Background -->
   <canvas id="canyon"></canvas>
@@ -70,5 +73,16 @@
   </main>
 
   <script src="webgl.js"></script>
+  <script>
+    // Press Space to toggle overlay visibility
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && e.target === document.body) {
+        e.preventDefault();
+        const content = document.querySelector('.content');
+        content.style.display = content.style.display === 'none' ? 'flex' : 'none';
+      }
+    });
+  </script>
 </body>
+
 </html>

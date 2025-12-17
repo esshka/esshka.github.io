@@ -98,9 +98,47 @@ varying float vFog;
 varying float vLight;
 uniform vec2 uMouse;
 
+// Procedural noise for texture
+float hash(vec2 p) {
+  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  
+  float a = hash(i);
+  float b = hash(i + vec2(1.0, 0.0));
+  float c = hash(i + vec2(0.0, 1.0));
+  float d = hash(i + vec2(1.0, 1.0));
+  
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+float fbm(vec2 p) {
+  float v = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 4; i++) {
+    v += a * noise(p);
+    p *= 2.0;
+    a *= 0.5;
+  }
+  return v;
+}
+
 void main() {
+  // Procedural texture coordinates
+  vec2 uv = vPos.xz * 0.5 + vPos.y * 0.3;
+  
+  // Multi-octave noise for rocky texture
+  float tex = fbm(uv * 3.0) * 0.4 + fbm(uv * 8.0) * 0.2;
+  
   // Canyon wall color - blue/cyan tones
   vec3 col = vec3(0.05, 0.15, 0.25);
+  
+  // Add texture variation
+  col += vec3(0.02, 0.04, 0.06) * tex;
   
   // Height-based lighting
   col += vec3(0.0, 0.1, 0.15) * (vPos.y * 0.3);
@@ -113,12 +151,14 @@ void main() {
   // Apply dynamic light
   col *= vLight;
   
+  // Add subtle edge highlights based on texture
+  col += vec3(0.0, 0.05, 0.08) * (tex * tex);
+  
   // Distance fog to dark
   col = mix(col, vec3(0.02, 0.02, 0.04), vFog);
   
   gl_FragColor = vec4(col, 1.0);
-}
-`;
+}`;
 
 // ========== SHIP SHADERS ==========
 const shipVS = `
