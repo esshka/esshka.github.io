@@ -161,46 +161,114 @@ void main() {
 }`;
 
 // ========== SHIP SHADERS ==========
+// ========== SHIP SHADERS ==========
 const shipVS = `
 precision mediump float;
 attribute vec3 aPos;
-uniform vec2 uMouse;
+attribute vec3 aNorm;
+uniform vec3 uPos;      // Ship position
+uniform vec3 uRot;      // Ship rotation (pitch, yaw, roll)
+uniform float uTime;
 varying vec3 vNorm;
+varying vec3 vWorldPos;
+
+// Rotation matrices
+mat3 rotateX(float theta) {
+    float c = cos(theta);
+    float s = sin(theta);
+    return mat3(
+        1, 0, 0,
+        0, c, -s,
+        0, s, c
+    );
+}
+
+mat3 rotateY(float theta) {
+    float c = cos(theta);
+    float s = sin(theta);
+    return mat3(
+        c, 0, s,
+        0, 1, 0,
+        -s, 0, c
+    );
+}
+
+mat3 rotateZ(float theta) {
+    float c = cos(theta);
+    float s = sin(theta);
+    return mat3(
+        c, -s, 0,
+        s, c, 0,
+        0, 0, 1
+    );
+}
 
 void main() {
   vec3 pos = aPos;
+  vec3 norm = aNorm;
   
-  // Ship tilts slightly with mouse (banking effect)
-  float tiltX = uMouse.x * 0.15;
-  float tiltY = uMouse.y * 0.1;
+  // Apply individual rotations
+  pos = rotateX(uRot.x) * pos;
+  pos = rotateY(uRot.y) * pos;
+  pos = rotateZ(uRot.z) * pos;
   
-  // Apply tilt rotation (simplified)
-  pos.x += pos.z * tiltX;
-  pos.y += pos.z * tiltY * 0.5;
+  norm = rotateX(uRot.x) * norm;
+  norm = rotateY(uRot.y) * norm;
+  norm = rotateZ(uRot.z) * norm;
+
+  // Move to world position
+  pos += uPos;
   
-  pos.y -= 0.35;
+  // Project to screen (fake perspective)
+  float depth = -pos.z + 5.0; // Camera offset
+  float scale = 1.5 / max(depth, 0.1);
   
-  gl_Position = vec4(pos.x, pos.y, 0.5, 1.0);
-  vNorm = aPos;
+  gl_Position = vec4(pos.x * scale, pos.y * scale * 1.5, pos.z * 0.02, 1.0);
+  
+  vNorm = normalize(norm);
+  vWorldPos = pos;
 }
 `;
 
 const shipFS = `
 precision mediump float;
 varying vec3 vNorm;
-uniform vec2 uMouse;
+varying vec3 vWorldPos;
+uniform float uTime;
 
 void main() {
-  // Glowing cyan ship
-  vec3 col = vec3(0.0, 0.7, 1.0);
+  vec3 viewDir = normalize(vec3(0.0, 0.0, 5.0) - vWorldPos);
+  vec3 normal = normalize(vNorm);
+  vec3 lightDir = normalize(vec3(1.0, 1.0, 1.0)); // Directional light from top-right
   
-  // Simple lighting
-  float light = 0.5 + vNorm.y * 0.5;
-  col *= light;
+  // Metallic Base Color (Silver/Gunmetal)
+  vec3 baseColor = vec3(0.2, 0.25, 0.3);
   
-  // Mouse-based glow intensity
-  float glowIntensity = 0.3 + abs(uMouse.x) * 0.2 + abs(uMouse.y) * 0.1;
-  col += vec3(0.1, glowIntensity, glowIntensity + 0.1);
+  // Lighting calculations
+  float ambient = 0.2;
+  float diff = max(dot(normal, lightDir), 0.0);
+  
+  // Specular (Blinn-Phong) - Sharp for metal
+  vec3 halfwayDir = normalize(lightDir + viewDir);
+  float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0);
+  
+  // Fresnel Effect (Rim Light) - enhancing volume
+  float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), 3.0);
+  
+  // Environment reflection (fake procedural)
+  vec3 refDir = reflect(-viewDir, normal);
+  float ref = sin(refDir.x * 10.0 + uTime) * sin(refDir.y * 10.0) * 0.5 + 0.5;
+  
+  // Combine
+  vec3 col = baseColor * (ambient + diff);
+  col += vec3(0.6, 0.8, 1.0) * spec * 2.0; // Cyan-ish specular
+  col += vec3(0.0, 0.8, 1.0) * fresnel * 0.8; // Cyan rim light
+  col += vec3(0.1) * ref; // Subtle reflection
+  
+  // Engine glow (if normal is pointing back)
+  if (normal.z > 0.8) {
+     col += vec3(0.0, 0.5, 1.0) * 2.0; 
+  }
   
   gl_FragColor = vec4(col, 1.0);
 }
@@ -241,22 +309,88 @@ function createCanyon() {
   return { buf, count: verts.length / 3 };
 }
 
-// Descent-style wedge ship
+// Descent-style wedge ship (Volumetric 3D)
 function createShip() {
+  const verts = [];
+
+  // Helper to add a 3D box
+  function addBox(x, y, z, w, h, d) {
+    // Front face
+    verts.push(x - w, y - h, z + d, 0, 0, 1);
+    verts.push(x + w, y - h, z + d, 0, 0, 1);
+    verts.push(x + w, y + h, z + d, 0, 0, 1);
+    verts.push(x - w, y - h, z + d, 0, 0, 1);
+    verts.push(x + w, y + h, z + d, 0, 0, 1);
+    verts.push(x - w, y + h, z + d, 0, 0, 1);
+
+    // Back face
+    verts.push(x - w, y - h, z - d, 0, 0, -1);
+    verts.push(x - w, y + h, z - d, 0, 0, -1);
+    verts.push(x + w, y + h, z - d, 0, 0, -1);
+    verts.push(x - w, y - h, z - d, 0, 0, -1);
+    verts.push(x + w, y + h, z - d, 0, 0, -1);
+    verts.push(x + w, y - h, z - d, 0, 0, -1);
+
+    // Top face
+    verts.push(x - w, y + h, z - d, 0, 1, 0);
+    verts.push(x - w, y + h, z + d, 0, 1, 0);
+    verts.push(x + w, y + h, z + d, 0, 1, 0);
+    verts.push(x - w, y + h, z - d, 0, 1, 0);
+    verts.push(x + w, y + h, z + d, 0, 1, 0);
+    verts.push(x + w, y + h, z - d, 0, 1, 0);
+
+    // Bottom face
+    verts.push(x - w, y - h, z - d, 0, -1, 0);
+    verts.push(x + w, y - h, z - d, 0, -1, 0);
+    verts.push(x + w, y - h, z + d, 0, -1, 0);
+    verts.push(x - w, y - h, z - d, 0, -1, 0);
+    verts.push(x + w, y - h, z + d, 0, -1, 0);
+    verts.push(x - w, y - h, z + d, 0, -1, 0);
+
+    // Right face
+    verts.push(x + w, y - h, z - d, 1, 0, 0);
+    verts.push(x + w, y + h, z - d, 1, 0, 0);
+    verts.push(x + w, y + h, z + d, 1, 0, 0);
+    verts.push(x + w, y - h, z - d, 1, 0, 0);
+    verts.push(x + w, y + h, z + d, 1, 0, 0);
+    verts.push(x + w, y - h, z + d, 1, 0, 0);
+
+    // Left face
+    verts.push(x - w, y - h, z - d, -1, 0, 0);
+    verts.push(x - w, y - h, z + d, -1, 0, 0);
+    verts.push(x - w, y + h, z + d, -1, 0, 0);
+    verts.push(x - w, y - h, z - d, -1, 0, 0);
+    verts.push(x - w, y + h, z + d, -1, 0, 0);
+    verts.push(x - w, y + h, z - d, -1, 0, 0);
+  }
+
+  // Build Ship
   const s = 0.08;
-  const verts = [
-    0, s * 0.3, -s * 2.5, -s, 0, s, s, 0, s,
-    0, -s * 0.2, -s * 2.5, s, 0, s, -s, 0, s,
-    0, s * 0.3, -s * 2.5, 0, -s * 0.2, -s * 2.5, -s, 0, s,
-    0, s * 0.3, -s * 2.5, s, 0, s, 0, -s * 0.2, -s * 2.5,
-    -s, 0, s, -s * 2.5, 0, s * 0.5, -s * 0.5, 0, s,
-    s, 0, s, s * 0.5, 0, s, s * 2.5, 0, s * 0.5,
-  ];
+
+  // Main Fuselage (Long central body)
+  addBox(0, 0, 0, s * 1.5, s * 1.2, s * 4.0);
+
+  // Cockpit (Raised front)
+  addBox(0, s, s * 1.5, s * 1.0, s * 0.6, s * 1.5);
+
+  // Wings (projecting out)
+  addBox(s * 2.5, 0, -s, s * 1.5, s * 0.2, s * 2.0); // Right
+  addBox(-s * 2.5, 0, -s, s * 1.5, s * 0.2, s * 2.0); // Left
+
+  // Engines (On wing tips)
+  addBox(s * 4.0, 0, -s * 0.5, s * 0.6, s * 0.6, s * 3.0); // Right
+  addBox(-s * 4.0, 0, -s * 0.5, s * 0.6, s * 0.6, s * 3.0); // Left
+
+  // Vertical Fins (Rear of engines)
+  addBox(s * 4.0, s * 0.9, -s * 2.5, s * 0.1, s * 0.8, s * 0.8); // Right
+  addBox(-s * 4.0, s * 0.9, -s * 2.5, s * 0.1, s * 0.8, s * 0.8); // Left
 
   const buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
-  return { buf, count: verts.length / 3 };
+
+  // Convert 6 floats per vertex (3 pos + 3 norm) -> stride of 24 bytes
+  return { buf, count: verts.length / 6 };
 }
 
 // ========== INIT ==========
@@ -268,16 +402,72 @@ const ship = createShip();
 gl.enable(gl.DEPTH_TEST);
 gl.clearColor(0.02, 0.02, 0.04, 1);
 
+// ========== PHYSICS STATE ==========
+let shipPos = { x: 0, y: 0, z: -5 };
+let shipVel = { x: 0, y: 0, z: 0 };
+let shipRot = { x: 0, y: 0, z: 0 };
+let targetRot = { x: 0, y: 0, z: 0 }; // For smooth rotation
+
+// Physics constants
+const DRAG = 0.92;
+const ACCEL = 0.015;
+const ROT_SPEED = 0.1;
+const MAX_TILT = 0.8;
+
 // ========== RENDER LOOP ==========
 let time = 0;
 
 function render() {
   time += 0.016;
 
-  // Smooth mouse movement (easing)
-  mouseX += (targetMouseX - mouseX) * 0.05;
-  mouseY += (targetMouseY - mouseY) * 0.05;
+  // --- Physics Update ---
 
+  // Calculate target position based on mouse
+  // We want the ship to "chase" the mouse cursor in 3D space
+  // Map mouse (-1 to 1) to world coordinates roughly
+  const targetX = targetMouseX * 5.0; // Horizontal range
+  const targetY = targetMouseY * 3.0 + 0.5; // Vertical range (offset up slightly)
+
+  // 1. Acceleration towards target (spring-like force)
+  const diffX = targetX - shipPos.x;
+  const diffY = targetY - shipPos.y;
+
+  shipVel.x += diffX * ACCEL;
+  shipVel.y += diffY * ACCEL;
+
+  // 2. Apply Drag (Inertia)
+  shipVel.x *= DRAG;
+  shipVel.y *= DRAG;
+
+  // 3. Update Position
+  shipPos.x += shipVel.x;
+  shipPos.y += shipVel.y;
+
+  // 4. Calculate desired rotation based on movement (banking)
+  // Pitch (X-rotation): Nose up/down based on vertical velocity
+  // Roll (Z-rotation): Bank left/right based on horizontal velocity
+  // Yaw (Y-rotation): Turn slightly into the turn
+
+  targetRot.x = -shipVel.y * 1.5; // Pitch
+  targetRot.z = -shipVel.x * 1.5; // Roll (Bank)
+  targetRot.y = -shipVel.x * 0.5; // Yaw
+
+  // Add "idle turbulence" - gentle drifting when stationary
+  const noiseX = Math.sin(time * 0.5) * 0.05 + Math.sin(time * 1.3) * 0.02;
+  const noiseY = Math.cos(time * 0.7) * 0.05;
+  const noiseZ = Math.sin(time * 0.9) * 0.02;
+
+  targetRot.x += noiseX;
+  targetRot.y += noiseY;
+  targetRot.z += noiseZ;
+
+  // Smoothly interpolate rotation
+  shipRot.x += (targetRot.x - shipRot.x) * ROT_SPEED;
+  shipRot.y += (targetRot.y - shipRot.y) * ROT_SPEED;
+  shipRot.z += (targetRot.z - shipRot.z) * ROT_SPEED;
+
+
+  // --- Render ---
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Draw canyon
@@ -288,22 +478,33 @@ function render() {
   gl.enableVertexAttribArray(canyonPos);
   gl.vertexAttribPointer(canyonPos, 3, gl.FLOAT, false, 0, 0);
   gl.uniform1f(gl.getUniformLocation(canyonProg, 'uTime'), time);
-  gl.uniform2f(gl.getUniformLocation(canyonProg, 'uMouse'), mouseX, mouseY);
+  gl.uniform2f(gl.getUniformLocation(canyonProg, 'uMouse'), mouseX, mouseY); // Keep subtle background parallax
 
   gl.drawArrays(gl.TRIANGLES, 0, canyon.count);
 
-  // Draw ship on top
-  gl.disable(gl.DEPTH_TEST);
+  // Draw ship
   gl.useProgram(shipProg);
   gl.bindBuffer(gl.ARRAY_BUFFER, ship.buf);
 
-  const shipPos = gl.getAttribLocation(shipProg, 'aPos');
-  gl.enableVertexAttribArray(shipPos);
-  gl.vertexAttribPointer(shipPos, 3, gl.FLOAT, false, 0, 0);
-  gl.uniform2f(gl.getUniformLocation(shipProg, 'uMouse'), mouseX, mouseY);
+  // Stride is 24 bytes (3 floats pos, 3 floats norm)
+  const FSIZE = 4;
+  const stride = 6 * FSIZE;
+
+  const shipPosLoc = gl.getAttribLocation(shipProg, 'aPos');
+  const shipNormLoc = gl.getAttribLocation(shipProg, 'aNorm');
+
+  gl.enableVertexAttribArray(shipPosLoc);
+  gl.vertexAttribPointer(shipPosLoc, 3, gl.FLOAT, false, stride, 0);
+
+  gl.enableVertexAttribArray(shipNormLoc);
+  gl.vertexAttribPointer(shipNormLoc, 3, gl.FLOAT, false, stride, 3 * FSIZE);
+
+  // Uniforms
+  gl.uniform3f(gl.getUniformLocation(shipProg, 'uPos'), shipPos.x, shipPos.y, shipPos.z);
+  gl.uniform3f(gl.getUniformLocation(shipProg, 'uRot'), shipRot.x, shipRot.y, shipRot.z);
+  gl.uniform1f(gl.getUniformLocation(shipProg, 'uTime'), time);
 
   gl.drawArrays(gl.TRIANGLES, 0, ship.count);
-  gl.enable(gl.DEPTH_TEST);
 
   requestAnimationFrame(render);
 }

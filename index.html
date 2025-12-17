@@ -17,6 +17,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="modal_styles.css">
 </head>
 
 <body>
@@ -98,18 +99,123 @@
       <a href="https://www.upwork.com/freelancers/~01cd0a1946156a02a1" class="cta-button" target="_blank">
         Hire Me on Upwork
       </a>
+      <button class="services-button" id="servicesBtn">View Services</button>
       <p class="cta-note">100% Job Success Score since 2016</p>
     </section>
   </main>
 
+  <!-- Services Modal -->
+  <div class="modal-backdrop" id="servicesModal">
+    <div class="modal-content">
+      <button class="modal-close" id="closeModal">&times;</button>
+      <h2>Services Provided</h2>
+      <p class="modal-intro">
+        I provide consulting and software development services. I am available for contract work, advisory roles, and
+        long-term engagements.
+      </p>
+
+      <div class="modal-section">
+        <h3>Consulting Services</h3>
+        <p class="section-desc">I help companies solve complex technical challenges:</p>
+        <ul>
+          <li><strong>Technical Architecture Review</strong> — I will analyze your existing system and provide
+            recommendations
+            for improvement (bottlenecks, security, scalability).</li>
+          <li><strong>AI/ML Strategy</strong> — Helping teams adopt machine learning effectively, from approach to
+            production pipelines.</li>
+          <li><strong>Technology Advisory</strong> — Unbiased guidance on technology choices based on your specific
+            requirements.</li>
+          <li><strong>Team Mentoring</strong> — Improving your engineering team's skills through code reviews, pair
+            programming, and knowledge transfer.</li>
+        </ul>
+      </div>
+
+      <div class="modal-section">
+        <h3>Software Development Services</h3>
+        <p class="section-desc">I build custom software solutions:</p>
+        <ul>
+          <li><strong>Full-Stack Development</strong> — End-to-end implementation (Python, Java, Rust, JS, etc.).</li>
+          <li><strong>Machine Learning Systems</strong> — Custom ML solutions, data pipelines, model training, and
+            deployment.</li>
+          <li><strong>Algorithmic Trading Platforms</strong> — Exchange integrations, backtesting, signal processing,
+            and
+            execution.</li>
+          <li><strong>High-Performance Systems</strong> — Low-latency applications and real-time systems.</li>
+          <li><strong>API Development</strong> — RESTful APIs, GraphQL, WebSocket services.</li>
+        </ul>
+      </div>
+
+      <div class="modal-section">
+        <h3>Engagement Models</h3>
+        <div class="engagement-grid">
+          <div class="engagement-card">
+            <h4>Hourly Consulting</h4>
+            <p>For focused problem-solving and advice</p>
+          </div>
+          <div class="engagement-card">
+            <h4>Project-Based</h4>
+            <p>Fixed scope with clear deliverables</p>
+          </div>
+          <div class="engagement-card">
+            <h4>Retainer</h4>
+            <p>Ongoing support with guaranteed availability</p>
+          </div>
+          <div class="engagement-card">
+            <h4>Long-Term Contract</h4>
+            <p>Embedded in your team for extended periods</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Space Key Hint -->
+  <div class="hotkey-hint">
+    <span class="key">Space</span> to toggle view
+  </div>
+
   <script src="webgl.js"></script>
   <script>
-    // Press Space to toggle overlay visibility
+    // Elements
+    const content = document.querySelector('.content');
+    const hint = document.querySelector('.hotkey-hint');
+    const modal = document.getElementById('servicesModal');
+    const servicesBtn = document.getElementById('servicesBtn');
+    const closeBtn = document.getElementById('closeModal');
+
+    // Toggle overlay visibility with Space
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Space' && e.target === document.body) {
         e.preventDefault();
-        const content = document.querySelector('.content');
-        content.style.display = content.style.display === 'none' ? 'flex' : 'none';
+        const isHidden = content.style.display === 'none';
+        content.style.display = isHidden ? 'flex' : 'none';
+        hint.style.opacity = isHidden ? '1' : '0.5';
+
+        // Also hide modal if open when toggling view
+        if (!isHidden) modal.classList.remove('active');
+      }
+    });
+
+    // Modal Logic
+    servicesBtn.addEventListener('click', () => {
+      modal.classList.add('active');
+    });
+
+    closeBtn.addEventListener('click', () => {
+      modal.classList.remove('active');
+    });
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('active');
+      }
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.classList.contains('active')) {
+        modal.classList.remove('active');
       }
     });
   </script>
