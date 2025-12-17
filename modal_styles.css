@@ -1,0 +1,303 @@
+/*
+  /Users/esshka/hireme/modal_styles.css
+  Modal-specific styles for services and achievements dialogs
+  RELEVANT FILES: index.html, styles.css
+*/
+
+.modal-backdrop[hidden] {
+  display: none;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(4, 8, 16, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+.modal-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-content {
+  width: min(940px, 100%);
+  max-height: min(90vh, 940px);
+  overflow-y: auto;
+  position: relative;
+  background: rgba(8, 13, 26, 0.94);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow: 0 24px 74px rgba(2, 7, 17, 0.65);
+  padding: 2rem;
+  transform: translateY(18px) scale(0.985);
+  transition: transform 240ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.modal-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 24px 24px 0 0;
+  background: linear-gradient(90deg, transparent, var(--accent), var(--accent-alt), transparent);
+  opacity: 0.82;
+}
+
+.modal-backdrop.active .modal-content {
+  transform: translateY(0) scale(1);
+}
+
+.modal-content:focus {
+  outline: none;
+}
+
+.modal-close {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--border);
+  background: rgba(4, 7, 16, 0.92);
+  color: var(--muted);
+  border-radius: 999px;
+  font-size: 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+.modal-close:hover {
+  background: rgba(9, 14, 28, 0.96);
+  border-color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.modal-content h2 {
+  font-size: clamp(1.5rem, 3vw, 1.95rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.85rem;
+  color: var(--ink-strong);
+  padding-right: 2.2rem;
+}
+
+.modal-intro {
+  color: var(--muted);
+  font-size: 0.98rem;
+  line-height: 1.62;
+  margin-bottom: 1.35rem;
+}
+
+.modal-section {
+  margin-bottom: 1.75rem;
+}
+
+.modal-section h3 {
+  font-size: 1.08rem;
+  line-height: 1.35;
+  color: var(--accent-strong);
+  margin-bottom: 0.62rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-desc {
+  margin-bottom: 0.7rem;
+  color: var(--muted);
+}
+
+.modal-section ul,
+.achievement-list {
+  list-style: none;
+  padding: 0;
+}
+
+.modal-section li {
+  position: relative;
+  color: var(--muted);
+  line-height: 1.52;
+  margin-bottom: 0.68rem;
+  padding-left: 1.08rem;
+}
+
+.modal-section li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.modal-section li strong {
+  color: var(--ink);
+}
+
+.engagement-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.7rem;
+}
+
+.engagement-card {
+  border: 1px solid var(--border);
+  background: rgba(13, 20, 36, 0.92);
+  border-radius: 12px;
+  padding: 0.9rem;
+}
+
+.engagement-card h4 {
+  color: var(--ink);
+  margin-bottom: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.engagement-card p {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.achievements-timeline {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 1.3rem;
+}
+
+.achievements-timeline::before {
+  content: '';
+  position: absolute;
+  left: 0.55rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(255, 122, 24, 0.55), rgba(0, 212, 166, 0.22));
+}
+
+.achievement-item {
+  display: flex;
+  gap: 0.75rem;
+  position: relative;
+  margin-bottom: 1.15rem;
+}
+
+.achievement-icon {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 122, 24, 0.45);
+  background: rgba(7, 12, 24, 0.95);
+  font-size: 0.92rem;
+  position: relative;
+  z-index: 1;
+}
+
+.achievement-content h4 {
+  color: var(--ink);
+  font-size: 0.98rem;
+  margin-bottom: 0.15rem;
+}
+
+.achievement-year {
+  color: var(--accent-alt);
+  font-size: 0.78rem;
+  margin-bottom: 0.42rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'Space Grotesk', monospace;
+}
+
+.achievement-list li {
+  position: relative;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.48;
+  padding-left: 1.03rem;
+  margin-bottom: 0.44rem;
+}
+
+.achievement-list li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--accent-strong);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.metric-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 122, 24, 0.15), rgba(0, 212, 166, 0.08));
+  text-align: center;
+  padding: 0.82rem 0.62rem;
+}
+
+.metric-value {
+  display: block;
+  color: var(--ink-strong);
+  font-size: 1.32rem;
+  margin-bottom: 0.1rem;
+}
+
+.metric-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-family: 'JetBrains Mono', 'Space Grotesk', monospace;
+}
+
+@media (max-width: 860px) {
+  .modal-content {
+    width: min(96vw, 96vw);
+    max-height: 88vh;
+    border-radius: 18px;
+    padding: 1.2rem 1rem;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .achievement-item {
+    margin-bottom: 0.95rem;
+  }
+
+  .achievement-content h4 {
+    font-size: 0.91rem;
+  }
+
+  .achievement-list li {
+    font-size: 0.79rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  .modal-backdrop,
+  .modal-content,
+  .modal-close {
+    transition: none !important;
+  }
+}
