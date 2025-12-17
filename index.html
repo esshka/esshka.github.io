@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<!--
+  /Users/esshka/hireme/index.html
+  Main landing page for HIREME - Eugene's personal portfolio
+  Entry point with WebGL canyon background and profile content
+  RELEVANT FILES: styles.css, webgl.js, about.txt
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Eugene - Principal Software Engineer & Architect. 20+ years experience in ML/AI, fintech, and distributed systems.">
+  <title>Eugene | Principal Software Engineer & Architect</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- WebGL Canvas Background -->
+  <canvas id="canyon"></canvas>
+
+  <!-- Main Content Overlay -->
+  <main class="content">
+    <section class="hero">
+      <div class="hero-badge">Available for Hire</div>
+      <h1>Eugene</h1>
+      <p class="subtitle">Principal Software Engineer & Architect</p>
+      <p class="tagline">20+ years building complex systems • TOP Rated+ on Upwork</p>
+    </section>
+
+    <section class="expertise">
+      <div class="expertise-grid">
+        <div class="expertise-card">
+          <span class="icon">🧠</span>
+          <h3>Machine Learning & AI</h3>
+          <p>Deep learning, neuroevolution, autonomous systems</p>
+        </div>
+        <div class="expertise-card">
+          <span class="icon">📈</span>
+          <h3>Financial Technology</h3>
+          <p>Algorithmic trading, market making, exchange APIs</p>
+        </div>
+        <div class="expertise-card">
+          <span class="icon">⚡</span>
+          <h3>Distributed Systems</h3>
+          <p>Microservices, event-driven, real-time processing</p>
+        </div>
+        <div class="expertise-card">
+          <span class="icon">👁️</span>
+          <h3>Computer Vision</h3>
+          <p>Image processing, object detection, video analysis</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="tech-stack">
+      <div class="tech-pills">
+        <span>Python</span><span>Rust</span><span>C#</span><span>JavaScript</span>
+        <span>PyTorch</span><span>TensorFlow</span><span>Kubernetes</span><span>AWS</span>
+      </div>
+    </section>
+
+    <section class="cta">
+      <a href="https://www.upwork.com/freelancers/~eugene" class="cta-button" target="_blank">
+        Hire Me on Upwork
+      </a>
+      <p class="cta-note">100% Job Success Score since 2016</p>
+    </section>
+  </main>
+
+  <script src="webgl.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+Hi, I'm Eugene — Principal Software Engineer & Architect
+Upwork Success Rate Since
+
+�‍💻 About Me
+I am a Principal Software Engineer and Architect with 20+ years of professional experience building complex systems.
+
+My background is in Mathematics and Computer Science. This gives me strong fundamentals in algorithms, data structures, and theoretical foundations of machine learning.
+
+I value clean architecture and well-structured code. My preferred patterns include SOLID principles, Event-Driven Architecture, CQRS, and asynchronous programming. These approaches allow me to build systems that are maintainable, scalable, and easy to reason about.
+
+I earned my Microsoft Certified Solution Developer (MCSD) certification in 2005. Since then, I have worked professionally with C#, .NET ecosystem, and many other technologies.
+
+Over the years, I have built and shipped products for multiple startups. I have experience in full product lifecycle — from initial architecture to production deployment and maintenance.
+
+My project portfolio covers many domains: e-commerce, booking and ticketing systems, project management and issue-tracking software, real-time online games, and various real-time communication systems. I have extensive experience with trading platforms, exchange APIs, cryptocurrency, and fintech in general.
+
+Since 2016, I maintain a TOP rated+ profile on Upwork with 100% Job Success Score. My clients range from early-stage startups to established companies.
+
+🎯 Current Focus
+Right now I am working on algorithmic trading systems and financial technology. This includes:
+
+Market Making Software — Genetic algorithms combined with deep learning, designed for high-frequency trading
+Neuroevolution-Driven Autonomous Systems — Self-evolving neural networks for adaptive decision making
+Advanced Computer Vision — Deep learning solutions for image processing and visual recognition
+🧠 Core Expertise
+Domain	Experience
+Software Architecture	System design, distributed systems, microservices, event-driven architecture
+Machine Learning & AI	Deep learning, neural networks, neuroevolution, reinforcement learning, agentic AI
+Generative AI	LLMs, prompt engineering, RAG systems, AI agents, autonomous systems
+Computer Vision	Image processing, object detection, visual recognition, video analysis
+Robotics & Automation	Sensor integration, control systems, autonomous decision making
+Financial Technology	Algorithmic trading, market making, backtesting, exchange integrations
+Backend Development	High-performance systems, real-time processing, API design
+🛠️ Technology Stack
+Languages
+Python Rust Java JavaScript Kotlin Clojure C# Ruby
+
+Machine Learning & Data
+TensorFlow PyTorch scikit-learn Pandas Keras
+
+Infrastructure & DevOps
+Docker Kubernetes AWS Terraform Grafana Prometheus
+
+Databases & Messaging
+PostgreSQL Redis Neo4j Apache Kafka NATS
+
+Frontend & Web
+React Node.js Three.js WebGL
