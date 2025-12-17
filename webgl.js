@@ -1,7 +1,7 @@
 /*
   /Users/esshka/hireme/webgl.js
   WebGL procedural canyon with Descent-style fixed spaceship
-  Compact code - terrain scrolls, ship stays centered
+  Mouse parallax effect with dynamic lighting
   RELEVANT FILES: index.html, styles.css
 */
 
@@ -11,6 +11,15 @@ const gl = canvas.getContext('webgl');
 if (!gl) {
   console.error('WebGL not supported');
 }
+
+// Mouse position (normalized -1 to 1)
+let mouseX = 0, mouseY = 0;
+let targetMouseX = 0, targetMouseY = 0;
+
+document.addEventListener('mousemove', (e) => {
+  targetMouseX = (e.clientX / window.innerWidth) * 2 - 1;
+  targetMouseY = (e.clientY / window.innerHeight) * 2 - 1;
+});
 
 // Resize canvas
 function resize() {
@@ -46,10 +55,13 @@ function createProgram(vs, fs) {
 
 // ========== CANYON SHADERS ==========
 const canyonVS = `
+precision mediump float;
 attribute vec3 aPos;
 uniform float uTime;
+uniform vec2 uMouse;
 varying vec3 vPos;
 varying float vFog;
+varying float vLight;
 
 void main() {
   vec3 pos = aPos;
@@ -58,10 +70,12 @@ void main() {
   pos.z = pos.z - uTime * 3.0;
   pos.z = mod(pos.z + 30.0, 60.0) - 30.0;
   
-  // Camera looking down canyon
+  // Camera with parallax offset from mouse
   vec3 camPos = pos;
-  camPos.z -= 5.0; // Pull back
-  camPos.y -= 0.5; // Slight elevation
+  camPos.x -= uMouse.x * 0.8; // Parallax horizontal
+  camPos.y -= uMouse.y * 0.3; // Parallax vertical (subtle)
+  camPos.z -= 5.0;
+  camPos.y -= 0.5;
   
   // Simple perspective
   float depth = -camPos.z;
@@ -71,6 +85,9 @@ void main() {
   
   vPos = aPos;
   vFog = clamp(depth / 25.0, 0.0, 1.0);
+  
+  // Dynamic light based on mouse position
+  vLight = 1.0 + uMouse.x * 0.3;
 }
 `;
 
@@ -78,6 +95,8 @@ const canyonFS = `
 precision mediump float;
 varying vec3 vPos;
 varying float vFog;
+varying float vLight;
+uniform vec2 uMouse;
 
 void main() {
   // Canyon wall color - blue/cyan tones
@@ -85,6 +104,14 @@ void main() {
   
   // Height-based lighting
   col += vec3(0.0, 0.1, 0.15) * (vPos.y * 0.3);
+  
+  // Mouse-based color shift (warm/cool)
+  col.r += uMouse.x * 0.05;
+  col.b -= uMouse.x * 0.03;
+  col.g += uMouse.y * 0.02;
+  
+  // Apply dynamic light
+  col *= vLight;
   
   // Distance fog to dark
   col = mix(col, vec3(0.02, 0.02, 0.04), vFog);
@@ -95,13 +122,23 @@ void main() {
 
 // ========== SHIP SHADERS ==========
 const shipVS = `
+precision mediump float;
 attribute vec3 aPos;
+uniform vec2 uMouse;
 varying vec3 vNorm;
 
 void main() {
-  // Fixed position at bottom-center of screen
   vec3 pos = aPos;
-  pos.y -= 0.35; // Move down
+  
+  // Ship tilts slightly with mouse (banking effect)
+  float tiltX = uMouse.x * 0.15;
+  float tiltY = uMouse.y * 0.1;
+  
+  // Apply tilt rotation (simplified)
+  pos.x += pos.z * tiltX;
+  pos.y += pos.z * tiltY * 0.5;
+  
+  pos.y -= 0.35;
   
   gl_Position = vec4(pos.x, pos.y, 0.5, 1.0);
   vNorm = aPos;
@@ -111,6 +148,7 @@ void main() {
 const shipFS = `
 precision mediump float;
 varying vec3 vNorm;
+uniform vec2 uMouse;
 
 void main() {
   // Glowing cyan ship
@@ -120,8 +158,9 @@ void main() {
   float light = 0.5 + vNorm.y * 0.5;
   col *= light;
   
-  // Glow effect
-  col += vec3(0.1, 0.3, 0.4);
+  // Mouse-based glow intensity
+  float glowIntensity = 0.3 + abs(uMouse.x) * 0.2 + abs(uMouse.y) * 0.1;
+  col += vec3(0.1, glowIntensity, glowIntensity + 0.1);
   
   gl_FragColor = vec4(col, 1.0);
 }
@@ -129,7 +168,7 @@ void main() {
 
 // ========== GEOMETRY ==========
 
-// Create canyon walls - two sides with height variation
+// Create canyon walls
 function createCanyon() {
   const verts = [];
   const segments = 40;
@@ -140,7 +179,6 @@ function createCanyon() {
     const z0 = (i / segments) * length - length / 2;
     const z1 = ((i + 1) / segments) * length - length / 2;
 
-    // Pseudo-random height based on position
     const h0 = 1.5 + Math.sin(z0 * 0.3) * 0.5 + Math.sin(z0 * 0.7) * 0.3;
     const h1 = 1.5 + Math.sin(z1 * 0.3) * 0.5 + Math.sin(z1 * 0.7) * 0.3;
 
@@ -167,17 +205,11 @@ function createCanyon() {
 function createShip() {
   const s = 0.08;
   const verts = [
-    // Top surface
     0, s * 0.3, -s * 2.5, -s, 0, s, s, 0, s,
-    // Bottom surface  
     0, -s * 0.2, -s * 2.5, s, 0, s, -s, 0, s,
-    // Left side
     0, s * 0.3, -s * 2.5, 0, -s * 0.2, -s * 2.5, -s, 0, s,
-    // Right side
     0, s * 0.3, -s * 2.5, s, 0, s, 0, -s * 0.2, -s * 2.5,
-    // Left wing
     -s, 0, s, -s * 2.5, 0, s * 0.5, -s * 0.5, 0, s,
-    // Right wing
     s, 0, s, s * 0.5, 0, s, s * 2.5, 0, s * 0.5,
   ];
 
@@ -202,6 +234,10 @@ let time = 0;
 function render() {
   time += 0.016;
 
+  // Smooth mouse movement (easing)
+  mouseX += (targetMouseX - mouseX) * 0.05;
+  mouseY += (targetMouseY - mouseY) * 0.05;
+
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Draw canyon
@@ -212,6 +248,7 @@ function render() {
   gl.enableVertexAttribArray(canyonPos);
   gl.vertexAttribPointer(canyonPos, 3, gl.FLOAT, false, 0, 0);
   gl.uniform1f(gl.getUniformLocation(canyonProg, 'uTime'), time);
+  gl.uniform2f(gl.getUniformLocation(canyonProg, 'uMouse'), mouseX, mouseY);
 
   gl.drawArrays(gl.TRIANGLES, 0, canyon.count);
 
@@ -223,6 +260,7 @@ function render() {
   const shipPos = gl.getAttribLocation(shipProg, 'aPos');
   gl.enableVertexAttribArray(shipPos);
   gl.vertexAttribPointer(shipPos, 3, gl.FLOAT, false, 0, 0);
+  gl.uniform2f(gl.getUniformLocation(shipProg, 'uMouse'), mouseX, mouseY);
 
   gl.drawArrays(gl.TRIANGLES, 0, ship.count);
   gl.enable(gl.DEPTH_TEST);
