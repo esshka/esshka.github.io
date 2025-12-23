@@ -53,15 +53,17 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(10px);
-    z-index: 100;
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 1000;
     display: flex;
     justify-content: center;
     align-items: center;
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
+    isolation: isolate;
 }
 
 .modal-backdrop.active {
@@ -70,7 +72,7 @@
 }
 
 .modal-content {
-    background: #12121e;
+    background: #0a0a12;
     border: 1px solid var(--glass-border);
     border-radius: 24px;
     width: 90%;
@@ -79,9 +81,11 @@
     overflow-y: auto;
     padding: 3rem;
     position: relative;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    z-index: 1001;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
     transform: translateY(20px);
     transition: transform 0.3s ease;
+    will-change: transform;
 }
 
 .modal-backdrop.active .modal-content {
@@ -215,7 +219,7 @@
 .achievement-icon {
     width: 2.5rem;
     height: 2.5rem;
-    background: #12121e;
+    background: #0a0a12;
     border: 2px solid var(--primary);
     border-radius: 50%;
     display: flex;
@@ -310,20 +314,128 @@
     .cta-button {
         display: block;
         width: 100%;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.75rem;
         text-align: center;
+        padding: 0.9rem 2rem;
     }
 
     .services-button {
         display: block;
         width: 100%;
         margin-left: 0;
+        margin-bottom: 0.75rem;
         text-align: center;
+        padding: 0.9rem 2rem;
+        background: rgba(0, 212, 255, 0.1);
+        border: 1px solid var(--primary);
+        color: var(--primary);
+    }
+
+    .services-button:hover {
+        background: rgba(0, 212, 255, 0.2);
     }
 
     .modal-content {
-        padding: 1.5rem;
+        padding: 1.25rem;
         width: 95%;
+        max-height: 85vh;
+        border-radius: 20px;
+    }
+
+    .modal-content h2 {
+        font-size: 1.5rem;
+        margin-bottom: 0.75rem;
+        padding-right: 2rem;
+    }
+
+    .modal-close {
+        top: 1rem;
+        right: 1rem;
+        font-size: 1.5rem;
+        width: 2rem;
+        height: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+    }
+
+    .modal-intro {
+        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+        line-height: 1.5;
+    }
+
+    .modal-section h3 {
+        font-size: 1.2rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.4rem;
+    }
+
+    /* Compact timeline for mobile */
+    .achievements-timeline {
+        padding-left: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .achievements-timeline::before {
+        left: 0.65rem;
+        width: 2px;
+    }
+
+    .achievement-item {
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .achievement-icon {
+        width: 1.75rem;
+        height: 1.75rem;
+        font-size: 0.9rem;
+        border-width: 1.5px;
+        box-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    .achievement-content h4 {
+        font-size: 0.95rem;
+        line-height: 1.3;
+        margin-bottom: 0.15rem;
+    }
+
+    .achievement-year {
+        font-size: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .achievement-list li {
+        font-size: 0.8rem;
+        padding-left: 1rem;
+        margin-bottom: 0.35rem;
+        line-height: 1.4;
+    }
+
+    .achievement-list li::before {
+        font-size: 0.7rem;
+    }
+
+    /* Metrics grid - 2 columns on mobile */
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .metric-card {
+        padding: 1rem 0.75rem;
+        border-radius: 10px;
+    }
+
+    .metric-value {
+        font-size: 1.5rem;
+    }
+
+    .metric-label {
+        font-size: 0.7rem;
     }
 
     .hotkey-hint {

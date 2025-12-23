@@ -322,6 +322,25 @@
     const servicesBtn = document.getElementById('servicesBtn');
     const achievementsBtn = document.getElementById('achievementsBtn');
     const closeBtn = document.getElementById('closeModal');
+    const canyonCanvas = document.getElementById('canyon');
+
+    // Helper to hide/show canvas during modal
+    function openModal(modalEl) {
+      canyonCanvas.style.display = 'none';
+      if (window.pauseWebGL) window.pauseWebGL();
+      modalEl.classList.add('active');
+    }
+
+    function closeModal(modalEl) {
+      modalEl.classList.remove('active');
+      // Delay showing canvas until modal animation completes
+      setTimeout(() => {
+        if (!modal.classList.contains('active') && !achievementsModal.classList.contains('active')) {
+          canyonCanvas.style.display = 'block';
+          if (window.resumeWebGL) window.resumeWebGL();
+        }
+      }, 300);
+    }
 
     // Toggle overlay visibility with Space
     document.addEventListener('keydown', (e) => {
@@ -332,46 +351,46 @@
         hint.style.opacity = isHidden ? '1' : '0.5';
 
         // Also hide modal if open when toggling view
-        if (!isHidden) modal.classList.remove('active');
+        if (!isHidden) closeModal(modal);
       }
     });
 
     // Modal Logic
     servicesBtn.addEventListener('click', () => {
-      modal.classList.add('active');
+      openModal(modal);
     });
 
     closeBtn.addEventListener('click', () => {
-      modal.classList.remove('active');
+      closeModal(modal);
     });
 
     // Achievements Modal Logic
     achievementsBtn.addEventListener('click', () => {
-      achievementsModal.classList.add('active');
+      openModal(achievementsModal);
     });
 
     document.getElementById('closeAchievements').addEventListener('click', () => {
-      achievementsModal.classList.remove('active');
+      closeModal(achievementsModal);
     });
 
     achievementsModal.addEventListener('click', (e) => {
       if (e.target === achievementsModal) {
-        achievementsModal.classList.remove('active');
+        closeModal(achievementsModal);
       }
     });
 
     // Close on backdrop click
     modal.addEventListener('click', (e) => {
       if (e.target === modal) {
-        modal.classList.remove('active');
+        closeModal(modal);
       }
     });
 
     // Close on Escape
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        modal.classList.remove('active');
-        achievementsModal.classList.remove('active');
+        closeModal(modal);
+        closeModal(achievementsModal);
       }
     });
   </script>

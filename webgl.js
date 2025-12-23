@@ -416,8 +416,15 @@ const MAX_TILT = 0.8;
 
 // ========== RENDER LOOP ==========
 let time = 0;
+let animationId = null;
+let isPaused = false;
 
 function render() {
+  if (isPaused) {
+    animationId = null;
+    return;
+  }
+
   time += 0.016;
 
   // --- Physics Update ---
@@ -506,7 +513,23 @@ function render() {
 
   gl.drawArrays(gl.TRIANGLES, 0, ship.count);
 
-  requestAnimationFrame(render);
+  animationId = requestAnimationFrame(render);
 }
+
+// Global functions to pause/resume animation
+window.pauseWebGL = function () {
+  isPaused = true;
+  if (animationId) {
+    cancelAnimationFrame(animationId);
+    animationId = null;
+  }
+};
+
+window.resumeWebGL = function () {
+  if (isPaused) {
+    isPaused = false;
+    render();
+  }
+};
 
 render();
