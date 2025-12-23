@@ -100,6 +100,7 @@
         Hire Me on Upwork
       </a>
       <button class="services-button" id="servicesBtn">View Services</button>
+      <button class="services-button" id="achievementsBtn">Track Record</button>
       <p class="cta-note">100% Job Success Score since 2016</p>
     </section>
   </main>
@@ -169,6 +170,143 @@
     </div>
   </div>
 
+  <!-- Achievements Modal -->
+  <div class="modal-backdrop" id="achievementsModal">
+    <div class="modal-content">
+      <button class="modal-close" id="closeAchievements">&times;</button>
+      <h2>Track Record & Achievements</h2>
+      <p class="modal-intro">
+        Key deliverables and accomplishments across 20+ years of building production systems.
+        Project details are confidential, but here's what I've achieved.
+      </p>
+
+      <div class="achievements-timeline">
+        <!-- Gen AI & Trading -->
+        <div class="achievement-item">
+          <div class="achievement-icon">🤖</div>
+          <div class="achievement-content">
+            <h4>Generative AI & Agentic Systems</h4>
+            <p class="achievement-year">2024 — Present</p>
+            <ul class="achievement-list">
+              <li>Architected production-grade RAG systems combining vector search with knowledge graphs</li>
+              <li>Built autonomous agent pipelines using LangGraph for multi-step market analysis</li>
+              <li>Delivered ML-driven trading strategies using neuroevolution and reinforcement learning</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- HFT & Low Latency -->
+        <div class="achievement-item">
+          <div class="achievement-icon">⚡</div>
+          <div class="achievement-content">
+            <h4>High-Frequency Trading & Low-Latency Systems</h4>
+            <p class="achievement-year">2024 — Present</p>
+            <ul class="achievement-list">
+              <li>Engineered market-making systems with sub-millisecond order execution</li>
+              <li>Implemented Avellaneda-Stoikov strategies with predictive alpha models</li>
+              <li>Designed event-sourced settlement engines with Rust hot paths for p99 latency optimization</li>
+              <li>Built gRPC/WebSocket interfaces handling 100k+ QPS market data distribution</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Real-time Metaverse -->
+        <div class="achievement-item">
+          <div class="achievement-icon">🌍</div>
+          <div class="achievement-content">
+            <h4>Real-Time Metaverse Platform</h4>
+            <p class="achievement-year">2021 — 2024</p>
+            <ul class="achievement-list">
+              <li>Owned core architecture for 500k+ LOC real-time PWA serving millions of users</li>
+              <li>Built massive event ingestion pipelines using Kafka with high-resiliency fan-out</li>
+              <li>Developed geo-spatial visualization handling millions of virtual assets with Canvas/WebGL</li>
+              <li>Re-architected frontend state management reducing render latency by 60%</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- WebRTC Platform -->
+        <div class="achievement-item">
+          <div class="achievement-icon">📹</div>
+          <div class="achievement-content">
+            <h4>WebRTC Communication Platform</h4>
+            <p class="achievement-year">2020 — 2021</p>
+            <ul class="achievement-list">
+              <li>Shipped end-to-end WebRTC infrastructure with signaling, TURN/STUN servers</li>
+              <li>Reduced call setup failures by 40% through robust failure mode handling</li>
+              <li>Implemented Blue/Green deployments with distributed tracing for strict SLOs</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Search & Content Platform -->
+        <div class="achievement-item">
+          <div class="achievement-icon">🔍</div>
+          <div class="achievement-content">
+            <h4>Enterprise Search & Content Platform</h4>
+            <p class="achievement-year">2019 — 2020</p>
+            <ul class="achievement-list">
+              <li>Architected Elasticsearch layer with custom analyzers and zero-downtime reindexing</li>
+              <li>Redesigned PostgreSQL schemas using JSONB for flexible content models</li>
+              <li>Led migration from legacy Rails to modern React SPA with complex project management UI</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Ticketing System -->
+        <div class="achievement-item">
+          <div class="achievement-icon">🎭</div>
+          <div class="achievement-content">
+            <h4>Real-Time Ticketing Platform</h4>
+            <p class="achievement-year">2017 — 2018</p>
+            <ul class="achievement-list">
+              <li>Built complex seat selection UI handling thousands of concurrent users</li>
+              <li>Decoupled monolith into bounded contexts following DDD principles</li>
+              <li>Implemented idempotent booking engine preventing overselling</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Earlier Career -->
+        <div class="achievement-item">
+          <div class="achievement-icon">🚀</div>
+          <div class="achievement-content">
+            <h4>Foundation & Earlier Achievements</h4>
+            <p class="achievement-year">2005 — 2017</p>
+            <ul class="achievement-list">
+              <li>Built ML-driven diet planning platform integrating with grocery delivery APIs</li>
+              <li>Led security audits and zero-downtime migrations for real-time gaming systems</li>
+              <li>Microsoft Certified Solution Developer (MCSD) since 2005</li>
+              <li>M.Sc. in Applied Mathematics & Computer Systems</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <h3>Key Metrics</h3>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <span class="metric-value">20+</span>
+            <span class="metric-label">Years Experience</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">100%</span>
+            <span class="metric-label">Upwork Success</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">500k+</span>
+            <span class="metric-label">LOC Maintained</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value">8+</span>
+            <span class="metric-label">Languages Mastered</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Space Key Hint -->
   <div class="hotkey-hint">
     <span class="key">Space</span> to toggle view
@@ -180,7 +318,9 @@
     const content = document.querySelector('.content');
     const hint = document.querySelector('.hotkey-hint');
     const modal = document.getElementById('servicesModal');
+    const achievementsModal = document.getElementById('achievementsModal');
     const servicesBtn = document.getElementById('servicesBtn');
+    const achievementsBtn = document.getElementById('achievementsBtn');
     const closeBtn = document.getElementById('closeModal');
 
     // Toggle overlay visibility with Space
@@ -205,6 +345,21 @@
       modal.classList.remove('active');
     });
 
+    // Achievements Modal Logic
+    achievementsBtn.addEventListener('click', () => {
+      achievementsModal.classList.add('active');
+    });
+
+    document.getElementById('closeAchievements').addEventListener('click', () => {
+      achievementsModal.classList.remove('active');
+    });
+
+    achievementsModal.addEventListener('click', (e) => {
+      if (e.target === achievementsModal) {
+        achievementsModal.classList.remove('active');
+      }
+    });
+
     // Close on backdrop click
     modal.addEventListener('click', (e) => {
       if (e.target === modal) {
@@ -214,8 +369,9 @@
 
     // Close on Escape
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && modal.classList.contains('active')) {
+      if (e.key === 'Escape') {
         modal.classList.remove('active');
+        achievementsModal.classList.remove('active');
       }
     });
   </script>
