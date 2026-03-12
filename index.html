@@ -46,7 +46,7 @@
           </button>
         </div>
 
-        <p class="cta-note">esshka@gmail.com • 100% Job Success Score on Upwork since 2016</p>
+        <p class="cta-note">esshka@gmail.com • 100% Job Success Score on Upwork</p>
 
         <section class="social-links" aria-label="Social links">
           <a href="https://github.com/esshka" target="_blank" rel="noopener noreferrer" title="GitHub"
@@ -163,17 +163,6 @@
       </div>
     </section>
 
-    <section class="section-card tweets-section reveal reveal-6" aria-labelledby="tweetsTitle">
-      <h2 id="tweetsTitle">Latest on X</h2>
-      <p class="tweets-intro">Recent posts from @genesshk</p>
-      <p id="tweetsStatus" class="tweets-status">Loading latest posts...</p>
-      <div id="tweetsFeed" class="tweets-feed" hidden>
-      </div>
-      <p id="tweetsFallback" class="tweets-fallback" hidden>
-        Could not load live posts. Visit
-        <a href="https://x.com/genesshk" target="_blank" rel="noopener noreferrer">@genesshk on X</a>.
-      </p>
-    </section>
   </main>
 
   <div class="mobile-sticky-cta">
@@ -254,10 +243,9 @@
     <div class="modal-content" tabindex="-1">
       <button class="modal-close" id="closeAchievements" type="button" data-close
         aria-label="Close achievements modal">&times;</button>
-      <h2 id="achievementsTitle">Track Record & Achievements</h2>
+      <h2 id="achievementsTitle">Capabilities & Outcomes</h2>
       <p class="modal-intro" id="achievementsIntro">
-        Key deliverables and accomplishments across 15+ years of building production systems.
-        Project details are confidential, but here's what I've achieved.
+        Selected outcomes and areas of work from confidential projects.
       </p>
 
       <div class="achievements-timeline">
@@ -265,7 +253,6 @@
           <div class="achievement-icon">🤖</div>
           <div class="achievement-content">
             <h4>Generative AI & Agentic Systems</h4>
-            <p class="achievement-year">2024 — 2026</p>
             <ul class="achievement-list">
               <li>Architected and delivered custom generative agentic pipelines for multi-step market analysis</li>
               <li>Built production-grade RAG systems combining vector search with knowledge graphs for high-precision retrieval</li>
@@ -278,7 +265,6 @@
           <div class="achievement-icon">⚡</div>
           <div class="achievement-content">
             <h4>High-Frequency Trading & Low-Latency Systems</h4>
-            <p class="achievement-year">2024 — 2026</p>
             <ul class="achievement-list">
               <li>Engineered market-making systems in Java, Clojure, and Python using Avellaneda-Stoikov-based strategies</li>
               <li>Designed event-sourced order intake and settlement engines with Java hot paths for lower p99 latency</li>
@@ -290,8 +276,7 @@
         <div class="achievement-item">
           <div class="achievement-icon">🌍</div>
           <div class="achievement-content">
-            <h4>Real-Time Metaverse Platform</h4>
-            <p class="achievement-year">2021 — 2024</p>
+            <h4>Real-Time Platform Architecture</h4>
             <ul class="achievement-list">
               <li>Owned core architecture for a 500k+ LOC PWA with heavy backend logic</li>
               <li>Implemented ingestion and fan-out pipelines using Java, Clojure, Kafka, and WebSockets</li>
@@ -305,7 +290,6 @@
           <div class="achievement-icon">📹</div>
           <div class="achievement-content">
             <h4>WebRTC Communication Platform</h4>
-            <p class="achievement-year">2020 — 2021</p>
             <ul class="achievement-list">
               <li>Shipped end-to-end WebRTC infrastructure with Node.js and Ruby on Rails signaling, TURN/STUN, and session orchestration</li>
               <li>Implemented Redis-backed presence systems and hardened failure modes for packet loss and call setup issues</li>
@@ -318,7 +302,6 @@
           <div class="achievement-icon">🔍</div>
           <div class="achievement-content">
             <h4>Enterprise Search & Content Platform</h4>
-            <p class="achievement-year">2019 — 2020</p>
             <ul class="achievement-list">
               <li>Architected Elasticsearch layer with custom analyzers and zero-downtime reindexing</li>
               <li>Redesigned PostgreSQL schemas using JSONB and GIN indexes for flexible content models</li>
@@ -331,7 +314,6 @@
           <div class="achievement-icon">🎭</div>
           <div class="achievement-content">
             <h4>Real-Time Ticketing Platform</h4>
-            <p class="achievement-year">2017 — 2018</p>
             <ul class="achievement-list">
               <li>Architected and developed a complex ticketing UI using React + MobX for seat selection and real-time interactions</li>
               <li>Decoupled monolith into bounded contexts following DDD principles</li>
@@ -343,13 +325,12 @@
         <div class="achievement-item">
           <div class="achievement-icon">🚀</div>
           <div class="achievement-content">
-            <h4>Foundation & Earlier Achievements</h4>
-            <p class="achievement-year">2005 — 2017</p>
+            <h4>Foundations & Cross-Domain Experience</h4>
             <ul class="achievement-list">
               <li>Built an ML-driven personal diet diary and e-commerce platform with React, MobX, Python, Ruby on Rails, and Java</li>
               <li>Led security audits and zero-downtime migrations for real-time gaming state using Ruby on Rails and React</li>
               <li>Historic mastery in the C#/.NET ecosystem with MCSD certification</li>
-              <li>M.Sc. in Applied Mathematics &amp; Computer Systems, St. Petersburg State University (2005)</li>
+              <li>Advanced academic foundation in applied mathematics, computer systems, algorithms, probability, and neural networks</li>
             </ul>
           </div>
         </div>
@@ -371,8 +352,8 @@
             <span class="metric-label">LOC Maintained</span>
           </div>
           <div class="metric-card">
-            <span class="metric-value">2016</span>
-            <span class="metric-label">Top Rated Plus Since</span>
+            <span class="metric-value">Top</span>
+            <span class="metric-label">Rated Plus</span>
           </div>
         </div>
       </div>
@@ -390,10 +371,6 @@
     const hint = document.querySelector('.hotkey-hint');
     const modalEls = Array.from(document.querySelectorAll('[data-modal]'));
     const triggerEls = Array.from(document.querySelectorAll('[data-modal-trigger]'));
-    const tweetsFeed = document.getElementById('tweetsFeed');
-    const tweetsFallback = document.getElementById('tweetsFallback');
-    const tweetsStatus = document.getElementById('tweetsStatus');
-
     const focusableSelector = [
       'a[href]',
       'button:not([disabled])',
@@ -405,156 +382,6 @@
 
     let activeModal = null;
     let lastTrigger = null;
-    const tweetsSourceUrl = 'https://r.jina.ai/http://x.com/genesshk';
-    const tweetsScreenName = 'genesshk';
-    const tweetsLimit = 3;
-
-    function setTweetsStatus(message, visible = true) {
-      if (!tweetsStatus) return;
-      tweetsStatus.textContent = message;
-      tweetsStatus.hidden = !visible;
-    }
-
-    function escapeHtml(value) {
-      return value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-    }
-
-    function extractTweetsFromMarkdown(markdown, screenName) {
-      const lines = markdown.split(/\r?\n/).map((line) => line.trim());
-      const statusLinePattern = new RegExp(`^\\[(.+?)\\]\\(https://x\\.com/${screenName}/status/(\\d+)\\)$`, 'i');
-      const statusLinkPattern = new RegExp(`^\\[[^\\]]*\\]\\(https://x\\.com/${screenName}/status/(\\d+)(?:/[^)]*)?\\)$`, 'i');
-      const profileLinkPattern = new RegExp(`^\\[[^\\]]*\\]\\(https://x\\.com/${screenName}(?:/[^)]*)?\\)$`, 'i');
-      const tweets = [];
-      const seenTweetIds = new Set();
-
-      for (let i = 0; i < lines.length; i += 1) {
-        const match = lines[i].match(statusLinePattern);
-        if (!match) continue;
-
-        const dateLabel = match[1];
-        const tweetId = match[2];
-        if (seenTweetIds.has(tweetId)) continue;
-
-        const textParts = [];
-        for (let j = i + 1; j < lines.length; j += 1) {
-          const line = lines[j];
-          if (!line) {
-            if (textParts.length > 0) break;
-            continue;
-          }
-
-          if (statusLinePattern.test(line)) break;
-          if (/^Pinned$/i.test(line)) continue;
-          if (/^-{2,}$/.test(line)) continue;
-
-          if (statusLinkPattern.test(line)) {
-            if (textParts.length > 0) break;
-            continue;
-          }
-
-          if (profileLinkPattern.test(line)) {
-            if (textParts.length > 0) break;
-            continue;
-          }
-
-          const cleanedLine = line
-            .replace(/!\[[^\]]*\]\([^)]+\)/g, '')
-            .replace(/\[[^\]]+\]\((https?:\/\/[^)]+)\)/g, '$1')
-            .trim();
-
-          if (!cleanedLine) continue;
-          if (/^\d+(?:\.\d+)?[KMB]?$/.test(cleanedLine)) continue;
-
-          textParts.push(cleanedLine);
-          if (textParts.join(' ').length >= 420) break;
-        }
-
-        tweets.push({
-          id: tweetId,
-          dateLabel,
-          text: textParts.join(' ').trim(),
-          url: `https://x.com/${screenName}/status/${tweetId}`
-        });
-
-        seenTweetIds.add(tweetId);
-        if (tweets.length >= tweetsLimit) break;
-      }
-
-      return tweets;
-    }
-
-    function renderTweetsFeed(tweets) {
-      if (!tweetsFeed) return;
-
-      tweetsFeed.innerHTML = tweets.map((tweet) => {
-        const text = tweet.text ? escapeHtml(tweet.text) : 'Open this post on X';
-        return `
-          <article class="tweet-card">
-            <p class="tweet-text">${text}</p>
-            <a class="tweet-meta" href="${tweet.url}" target="_blank" rel="noopener noreferrer">
-              <span>${escapeHtml(tweet.dateLabel)}</span>
-              <span>Open on X</span>
-            </a>
-          </article>
-        `;
-      }).join('');
-
-      tweetsFeed.hidden = false;
-      tweetsFallback.hidden = true;
-      setTweetsStatus('', false);
-    }
-
-    async function loadTweetsFeed() {
-      if (!tweetsFeed || !tweetsFallback || !tweetsStatus) return;
-
-      tweetsFeed.hidden = true;
-      tweetsFallback.hidden = true;
-      setTweetsStatus('Loading latest posts...');
-
-      const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), 10000);
-
-      try {
-        const response = await fetch(tweetsSourceUrl, {
-          method: 'GET',
-          headers: {
-            'Accept': 'text/plain'
-          },
-          signal: controller.signal
-        });
-
-        if (!response.ok) {
-          throw new Error(`Feed request failed with status ${response.status}`);
-        }
-
-        const markdown = await response.text();
-        const noPostsPattern = new RegExp(`@${tweetsScreenName}\\s+hasn.t\\s+posted`, 'i');
-        if (noPostsPattern.test(markdown)) {
-          setTweetsStatus(`No public posts are available for @${tweetsScreenName} right now.`);
-          tweetsFallback.hidden = false;
-          return;
-        }
-
-        const tweets = extractTweetsFromMarkdown(markdown, tweetsScreenName);
-        if (!tweets.length) {
-          setTweetsStatus(`No public posts are available for @${tweetsScreenName} right now.`);
-          tweetsFallback.hidden = false;
-          return;
-        }
-
-        renderTweetsFeed(tweets);
-      } catch (error) {
-        setTweetsStatus('Could not load live posts right now.');
-        tweetsFallback.hidden = false;
-      } finally {
-        window.clearTimeout(timeoutId);
-      }
-    }
 
     function getFocusable(modalEl) {
       return Array.from(modalEl.querySelectorAll(focusableSelector)).filter((el) => {
@@ -669,8 +496,6 @@
 
       trapFocus(event);
     });
-
-    loadTweetsFeed();
   </script>
 </body>
 
