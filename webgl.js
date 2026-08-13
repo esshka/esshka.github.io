@@ -266,7 +266,7 @@ varying float vTwinkle;
 void main() {
   vec3 pos = aPos;
   float speed = mix(0.25, 1.0, aLayer);
-  pos.z = pos.z - uTime * (1.0 + speed * 1.8);
+  pos.z = pos.z + uTime * (1.0 + speed * 1.8);
   pos.z = mod(pos.z + 90.0, 180.0) - 90.0;
 
   pos.x -= uCamOffset.x * (0.42 + speed * 0.28);
@@ -420,7 +420,9 @@ varying float vTravel;
 
 void main() {
   vec3 pos = aPos;
-  pos.z = pos.z - uTime * 3.4;
+  // +uTime, not -: the world approaches the camera. Forward flight down the
+  // trench, so the ship ahead of us shows its engines.
+  pos.z = pos.z + uTime * 3.4;
   pos.z = mod(pos.z + 42.0, 84.0) - 42.0;
 
   float breathe = sin(uTime * 1.2 + aPos.z * 0.2) * 0.05;
@@ -530,8 +532,8 @@ void main() {
   float haze = exp(-abs(vPos.y) * 1.9) * (1.0 - vDepth) * 0.45;
   baseCol += vec3(0.03, 0.045, 0.07) * haze;
 
-  float lanePulse = 0.5 + 0.5 * sin(uTime * 3.2 * uPulseSpeed - vTravel * 0.45);
-  float checkpoint = smoothstep(0.85, 1.0, sin(uTime * 1.96 - vTravel * 0.16));
+  float lanePulse = 0.5 + 0.5 * sin(uTime * 3.2 * uPulseSpeed + vTravel * 0.45);
+  float checkpoint = smoothstep(0.85, 1.0, sin(uTime * 1.96 + vTravel * 0.16));
 
   vec3 emissive = mix(uLaneA, uLaneB, lanePulse);
   emissive *= (0.3 + lanePulse * 0.7 + checkpoint * 0.9) * uLaneBoost;
@@ -724,6 +726,7 @@ precision mediump float;
 attribute vec3 aPos;
 attribute vec3 aNorm;
 attribute float aEmit;
+attribute float aPlume;
 uniform vec3 uPos;
 uniform vec3 uRot;
 uniform vec2 uCamOffset;
@@ -733,6 +736,8 @@ uniform float uMotionScale;
 varying vec3 vNorm;
 varying vec3 vWorldPos;
 varying float vEmit;
+varying float vPlume;
+uniform float uThrust;
 
 mat3 rotX(float t) {
   float c = cos(t);
@@ -757,6 +762,10 @@ void main() {
   vec3 n = aNorm;
 
   mat3 r = rotZ(uRot.z) * rotY(uRot.y) * rotX(uRot.x);
+  // aPlume is 0 on the hull, 1..2 along an exhaust plume. Stretching happens in
+  // ship space, before the rotation, so the plume always trails the nozzles.
+  float plumeT = max(aPlume - 1.0, 0.0);
+  p.z += plumeT * 0.95 * uThrust;
   p = r * p + uPos;
   n = normalize(r * n);
 
@@ -775,6 +784,7 @@ void main() {
   vNorm = n;
   vWorldPos = p;
   vEmit = aEmit;
+  vPlume = aPlume;
 }
 `;
 
@@ -783,11 +793,24 @@ precision mediump float;
 varying vec3 vNorm;
 varying vec3 vWorldPos;
 varying float vEmit;
+varying float vPlume;
 uniform float uTime;
 uniform float uPulse;
 uniform float uThrust;
 
 void main() {
+  // Exhaust plume: additive, unlit, fading along its length. Flicker rides on
+  // uPulse (computed CPU-side) rather than uTime, which is mediump and loses
+  // resolution over a long session.
+  if (vPlume > 0.5) {
+    float t = clamp(vPlume - 1.0, 0.0, 1.0);
+    float fade = pow(1.0 - t, 1.5);
+    float across = pow(max(1.0 - abs(vEmit), 0.0), 1.4);
+    float flicker = 0.82 + 0.18 * uPulse;
+    vec3 hot = mix(vec3(0.92, 0.97, 1.0), vec3(0.12, 0.55, 1.0), t);
+    gl_FragColor = vec4(hot * (0.8 + uThrust * 0.9) * flicker, fade * across * (0.4 + uThrust * 0.55));
+    return;
+  }
   vec3 viewDir = normalize(vec3(0.0, 0.0, 5.8) - vWorldPos);
   vec3 normal = normalize(vNorm);
   vec3 lightDir = normalize(vec3(0.7, 0.9, 0.55));
@@ -819,9 +842,10 @@ void main() {
 
     let program = null;
     let buffer = null;
-    let count = 0;
+    let hullCount = 0;
+    let plumeCount = 0;
 
-    const attribs = { pos: -1, norm: -1, emit: -1 };
+    const attribs = { pos: -1, norm: -1, emit: -1, plume: -1 };
     const uniforms = {
       pos: null,
       rot: null,
@@ -833,8 +857,10 @@ void main() {
       thrust: null,
     };
 
-    function pushVertex(out, pos, norm, emit) {
-      out.push(pos[0], pos[1], pos[2], norm[0], norm[1], norm[2], emit);
+    const STRIDE = 8;
+
+    function pushVertex(out, pos, norm, emit, plume = 0) {
+      out.push(pos[0], pos[1], pos[2], norm[0], norm[1], norm[2], emit, plume);
     }
 
     function pushTri(out, p0, p1, p2, norm, emit) {
@@ -887,6 +913,28 @@ void main() {
       pushTri(out, tip, rt, rb, [1, 0, 1], emit);
     }
 
+    // A plume is a cross of two tapered quads rather than a closed cone: additive
+    // blending on a closed volume just reads as a flat blob, and the cross keeps
+    // its shape from any angle the ship banks to. aPlume runs 1 at the nozzle to 2
+    // at the tip. aEmit is free on plume verts (the hull path never runs for them),
+    // so it carries -1..1 across the quad's width to soften the edges — without it
+    // the cross reads as two flat blades.
+    function pushPlumeQuad(out, base0, base1, tip1, tip0) {
+      const n = [0, 0, 1];
+      pushVertex(out, base0, n, -1, 1);
+      pushVertex(out, base1, n, 1, 1);
+      pushVertex(out, tip1, n, 1, 2);
+      pushVertex(out, base0, n, -1, 1);
+      pushVertex(out, tip1, n, 1, 2);
+      pushVertex(out, tip0, n, -1, 2);
+    }
+
+    function addPlume(out, x, y, z, r0, r1, len) {
+      const zt = z + len;
+      pushPlumeQuad(out, [x - r0, y, z], [x + r0, y, z], [x + r1, y, zt], [x - r1, y, zt]);
+      pushPlumeQuad(out, [x, y - r0, z], [x, y + r0, z], [x, y + r1, zt], [x, y - r1, zt]);
+    }
+
     function buildGeometry() {
       const verts = [];
       const s = 0.1;
@@ -914,13 +962,30 @@ void main() {
       addBox(verts, s * 3.95, s * 0.88, -s * 2.0, s * 0.11, s * 0.7, s * 0.62, 0);
       addBox(verts, -s * 3.95, s * 0.88, -s * 2.0, s * 0.11, s * 0.7, s * 0.62, 0);
 
+      // The hull above is modelled nose-forward (+z). Mirror z on positions and
+      // normals to turn it around, so the camera chasing it sees the nozzles.
+      // Winding flips too, which is harmless: CULL_FACE is never enabled.
+      for (let i = 0; i < verts.length; i += STRIDE) {
+        verts[i + 2] = -verts[i + 2];
+        verts[i + 5] = -verts[i + 5];
+      }
+
+      hullCount = verts.length / STRIDE;
+
+      // Plumes live after the hull in the same buffer so they can be drawn as a
+      // second, additive pass without a second buffer or program.
+      const nozzleZ = s * 4.0;
+      addPlume(verts, s * 3.95, 0, nozzleZ, s * 0.95, s * 0.3, s * 14.0);
+      addPlume(verts, -s * 3.95, 0, nozzleZ, s * 0.95, s * 0.3, s * 14.0);
+      addPlume(verts, 0, -s * 0.05, s * 4.05, s * 1.1, s * 0.34, s * 17.0);
+
       const data = new Float32Array(verts);
       if (!buffer) buffer = gl.createBuffer();
       if (!buffer) return false;
 
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
       gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-      count = data.length / 7;
+      plumeCount = data.length / STRIDE - hullCount;
       return true;
     }
 
@@ -931,6 +996,7 @@ void main() {
       attribs.pos = gl.getAttribLocation(program, 'aPos');
       attribs.norm = gl.getAttribLocation(program, 'aNorm');
       attribs.emit = gl.getAttribLocation(program, 'aEmit');
+      attribs.plume = gl.getAttribLocation(program, 'aPlume');
 
       uniforms.pos = gl.getUniformLocation(program, 'uPos');
       uniforms.rot = gl.getUniformLocation(program, 'uRot');
@@ -953,12 +1019,12 @@ void main() {
     }
 
     function draw(state) {
-      if (!program || !buffer || count === 0) return;
+      if (!program || !buffer || hullCount === 0) return;
 
       gl.useProgram(program);
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
 
-      const stride = 7 * 4;
+      const stride = STRIDE * 4;
       gl.enableVertexAttribArray(attribs.pos);
       gl.vertexAttribPointer(attribs.pos, 3, gl.FLOAT, false, stride, 0);
 
@@ -967,6 +1033,9 @@ void main() {
 
       gl.enableVertexAttribArray(attribs.emit);
       gl.vertexAttribPointer(attribs.emit, 1, gl.FLOAT, false, stride, 6 * 4);
+
+      gl.enableVertexAttribArray(attribs.plume);
+      gl.vertexAttribPointer(attribs.plume, 1, gl.FLOAT, false, stride, 7 * 4);
 
       gl.uniform3f(uniforms.pos, state.shipPos.x, state.shipPos.y, state.shipPos.z);
       gl.uniform3f(uniforms.rot, state.shipRot.x, state.shipRot.y, state.shipRot.z);
@@ -977,7 +1046,18 @@ void main() {
       gl.uniform1f(uniforms.pulse, 0.7 + 0.3 * state.lanePulse);
       gl.uniform1f(uniforms.thrust, state.shipThrust);
 
-      gl.drawArrays(gl.TRIANGLES, 0, count);
+      gl.drawArrays(gl.TRIANGLES, 0, hullCount);
+
+      if (plumeCount > 0) {
+        // Additive, and no depth writes: the plume must not occlude the hull it
+        // trails from, nor punch a hole in anything drawn behind it.
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        gl.depthMask(false);
+        gl.drawArrays(gl.TRIANGLES, hullCount, plumeCount);
+        gl.depthMask(true);
+        gl.disable(gl.BLEND);
+      }
     }
 
     return { init, rebuild, update, draw };
