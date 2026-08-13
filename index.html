@@ -7,6 +7,7 @@
   <meta name="description"
     content="Evgenii Shevchenko - Software Engineer specializing in Ruby, Python, Java, Clojure, Generative AI, algorithmic trading, event sourcing/CQRS/DDD, computer vision, and real-time systems.">
   <title>Evgenii Shevchenko | Software Engineer</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%2303060e'/><path d='M5 12V5h7M27 20v7h-7' stroke='%23ffa23a' stroke-width='2.5' fill='none'/><circle cx='16' cy='16' r='3.2' fill='%2346f2d6'/></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -25,7 +26,7 @@
   <main class="hud" id="pageContent">
     <div class="hud-topbar reveal reveal-1">
       <span><b>ESSHKA</b> / SOFTWARE ENGINEER</span>
-      <span class="drop">BELGRADE · SERBIA · UTC+1</span>
+      <span class="drop">BELGRADE · <time id="clock">--:--:--</time> LOCAL</span>
       <span class="live">AVAILABLE FOR CONTRACT</span>
     </div>
 
@@ -103,7 +104,7 @@
         <div class="panel-head">Capability matrix <em>/ 04 domains</em></div>
 
         <div class="matrix">
-          <article class="domain">
+          <article class="domain" style="--accent:#a86bff; --accent-2:#39e0ff">
             <span class="domain-no" aria-hidden="true">01</span>
             <h2 class="domain-name">Generative AI &amp; ML</h2>
             <span class="meter"><i style="--v:.96"></i></span>
@@ -124,7 +125,7 @@
             </dl>
           </article>
 
-          <article class="domain">
+          <article class="domain" style="--accent:#ffc23d; --accent-2:#2ce08a">
             <span class="domain-no" aria-hidden="true">02</span>
             <h2 class="domain-name">Algo Trading &amp; Real-Time</h2>
             <span class="meter"><i style="--v:.92"></i></span>
@@ -145,7 +146,7 @@
             </dl>
           </article>
 
-          <article class="domain">
+          <article class="domain" style="--accent:#ff6b52; --accent-2:#5aa2ff">
             <span class="domain-no" aria-hidden="true">03</span>
             <h2 class="domain-name">Architecture &amp; Event Systems</h2>
             <span class="meter"><i style="--v:.98"></i></span>
@@ -166,7 +167,7 @@
             </dl>
           </article>
 
-          <article class="domain">
+          <article class="domain" style="--accent:#ff5fae; --accent-2:#4ff0c6">
             <span class="domain-no" aria-hidden="true">04</span>
             <h2 class="domain-name">Interfaces &amp; Visualization</h2>
             <span class="meter"><i style="--v:.88"></i></span>
@@ -408,6 +409,12 @@
 
   <div class="hotkey-hint">
     <span class="key">Space</span> hide overlay
+  </div>
+
+  <div class="telemetry" aria-hidden="true">
+    <span>FPS <b id="tFps">--</b></span>
+    <span>TIER <b id="tTier">--</b></span>
+    <span>RES <b id="tRes">--</b></span>
   </div>
 
   <script src="webgl.js"></script>

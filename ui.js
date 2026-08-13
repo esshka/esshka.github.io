@@ -131,4 +131,76 @@
 
     trapFocus(event);
   });
+
+  /* ---- Live telemetry: the HUD reports real state, not decoration ---- */
+
+  const setText = (el, value) => {
+    if (el && el.textContent !== value) el.textContent = value;
+  };
+
+  const clockEl = document.getElementById('clock');
+  const clockFmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Belgrade',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  function tickClock() {
+    setText(clockEl, clockFmt.format(new Date()));
+  }
+
+  const fpsEl = document.getElementById('tFps');
+  const tierEl = document.getElementById('tTier');
+  const resEl = document.getElementById('tRes');
+
+  function pollStats() {
+    if (!window.webglStats) return;
+    const stats = window.webglStats();
+    setText(fpsEl, stats.fallback ? 'OFF' : String(stats.fps));
+    setText(tierEl, stats.fallback ? '2D' : stats.tier.toUpperCase());
+    setText(resEl, stats.fallback ? '—' : `${stats.width}×${stats.height}`);
+  }
+
+  tickClock();
+  pollStats();
+  setInterval(tickClock, 1000);
+  setInterval(pollStats, 500);
+
+  /* ---- Capability tiles drive the trench palette ---- */
+
+  function hexToRgb(hex) {
+    const raw = hex.trim().replace('#', '');
+    const full = raw.length === 3 ? raw.replace(/./g, (c) => c + c) : raw;
+    const n = parseInt(full, 16);
+    if (!Number.isFinite(n)) return null;
+    return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+  }
+
+  document.querySelectorAll('.domain').forEach((tile) => {
+    let pair;
+
+    const enter = () => {
+      if (!pair) {
+        const style = getComputedStyle(tile);
+        pair = [
+          hexToRgb(style.getPropertyValue('--accent')),
+          hexToRgb(style.getPropertyValue('--accent-2')),
+        ];
+      }
+      if (window.setLaneAccent && pair[0] && pair[1]) {
+        window.setLaneAccent(pair[0], pair[1]);
+      }
+    };
+
+    const leave = () => {
+      if (window.setLaneAccent) window.setLaneAccent(null);
+    };
+
+    tile.addEventListener('mouseenter', enter);
+    tile.addEventListener('mouseleave', leave);
+    tile.addEventListener('focusin', enter);
+    tile.addEventListener('focusout', leave);
+  });
 })();

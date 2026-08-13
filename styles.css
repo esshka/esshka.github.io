@@ -212,9 +212,10 @@ body.modal-open {
   display: none;
 }
 
-.hotkey-hint {
+/* Bottom rail: hotkey hint left, live telemetry right. */
+.hotkey-hint,
+.telemetry {
   position: fixed;
-  left: 1.6rem;
   bottom: 1.5rem;
   z-index: 15;
   pointer-events: none;
@@ -230,6 +231,21 @@ body.modal-open {
   border: 1px solid var(--line);
   padding: 0.12rem 0.34rem;
   margin-right: 0.35rem;
+}
+
+.hotkey-hint {
+  left: 1.6rem;
+}
+
+.telemetry {
+  right: 1.6rem;
+  display: flex;
+  gap: 1.1rem;
+}
+
+.telemetry b {
+  font-weight: 500;
+  color: var(--cyan);
 }
 
 :focus-visible {

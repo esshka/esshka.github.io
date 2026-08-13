@@ -108,7 +108,16 @@
     shipRot: null,
     lanePulse: 0,
     shipThrust: 0,
+    lane: null,
   };
+
+  // Lane emissive colours, driven from the page when a capability tile is focused.
+  // Only colour and intensity are animated: the pulse and scroll terms are phase
+  // functions of uTime, so retuning their rate mid-flight would teleport them.
+  const LANE_DEFAULT_A = [1.0, 0.52, 0.18];
+  const LANE_DEFAULT_B = [0.0, 0.84, 0.68];
+  const lane = { a: LANE_DEFAULT_A.slice(), b: LANE_DEFAULT_B.slice(), boost: 1 };
+  const laneTarget = { a: LANE_DEFAULT_A.slice(), b: LANE_DEFAULT_B.slice(), boost: 1 };
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const withDeadzone = (value, zone) => {
@@ -449,6 +458,9 @@ uniform float uHeat;
 uniform float uPulseSpeed;
 uniform float uOctaves;
 uniform float uTriplanar;
+uniform vec3 uLaneA;
+uniform vec3 uLaneB;
+uniform float uLaneBoost;
 
 // sin-free hash: noise() calls this 4x, up to 4 octaves x 3 projections per pixel.
 // At ~48 hashes/pixel the transcendental was the dominant fragment cost.
@@ -521,8 +533,8 @@ void main() {
   float lanePulse = 0.5 + 0.5 * sin(uTime * 3.2 * uPulseSpeed - vTravel * 0.45);
   float checkpoint = smoothstep(0.85, 1.0, sin(uTime * 1.96 - vTravel * 0.16));
 
-  vec3 emissive = mix(vec3(1.0, 0.52, 0.18), vec3(0.0, 0.84, 0.68), lanePulse);
-  emissive *= (0.3 + lanePulse * 0.7 + checkpoint * 0.9);
+  vec3 emissive = mix(uLaneA, uLaneB, lanePulse);
+  emissive *= (0.3 + lanePulse * 0.7 + checkpoint * 0.9) * uLaneBoost;
 
   float laneFactor = vEmissive * (uLaneGlow > 0.5 ? 1.0 : 0.28);
   vec3 col = baseCol + emissive * laneFactor;
@@ -553,6 +565,9 @@ void main() {
       pulseSpeed: null,
       octaves: null,
       triplanar: null,
+      laneA: null,
+      laneB: null,
+      laneBoost: null,
     };
 
     function centerOffset(z) {
@@ -656,6 +671,9 @@ void main() {
       uniforms.pulseSpeed = gl.getUniformLocation(program, 'uPulseSpeed');
       uniforms.octaves = gl.getUniformLocation(program, 'uOctaves');
       uniforms.triplanar = gl.getUniformLocation(program, 'uTriplanar');
+      uniforms.laneA = gl.getUniformLocation(program, 'uLaneA');
+      uniforms.laneB = gl.getUniformLocation(program, 'uLaneB');
+      uniforms.laneBoost = gl.getUniformLocation(program, 'uLaneBoost');
 
       return buildGeometry(profile);
     }
@@ -690,6 +708,9 @@ void main() {
       gl.uniform1f(uniforms.pulseSpeed, state.profile.lanePulseSpeed * state.motionScale);
       gl.uniform1f(uniforms.octaves, state.profile.fbmOctaves);
       gl.uniform1f(uniforms.triplanar, state.profile.triplanar ? 1.0 : 0.0);
+      gl.uniform3f(uniforms.laneA, state.lane.a[0], state.lane.a[1], state.lane.a[2]);
+      gl.uniform3f(uniforms.laneB, state.lane.b[0], state.lane.b[1], state.lane.b[2]);
+      gl.uniform1f(uniforms.laneBoost, state.lane.boost);
 
       gl.drawArrays(gl.TRIANGLES, 0, count);
     }
@@ -1162,6 +1183,13 @@ void main() {
     shipRot.y += (targetRot.y - shipRot.y) * rotLerp;
     shipRot.z += (targetRot.z - shipRot.z) * rotLerp;
 
+    const laneLerp = clamp(0.08 * dtNorm, 0.03, 0.2);
+    for (let i = 0; i < 3; i += 1) {
+      lane.a[i] += (laneTarget.a[i] - lane.a[i]) * laneLerp;
+      lane.b[i] += (laneTarget.b[i] - lane.b[i]) * laneLerp;
+    }
+    lane.boost += (laneTarget.boost - lane.boost) * laneLerp;
+
     if (starfieldModule) {
       starfieldModule.update();
     }
@@ -1201,6 +1229,7 @@ void main() {
     drawState.shipRot = shipRot;
     drawState.lanePulse = lanePulse;
     drawState.shipThrust = shipThrust;
+    drawState.lane = lane;
 
     if (starfieldModule) {
       starfieldModule.draw(drawState);
@@ -1253,6 +1282,24 @@ void main() {
       }
     }, false);
   }
+
+  // Page-facing API. setLaneAccent(null) returns the trench to its default palette.
+  window.setLaneAccent = function setLaneAccent(a, b, boost = 1.55) {
+    const ok = Array.isArray(a) && Array.isArray(b) && a.length === 3 && b.length === 3;
+    laneTarget.a = ok ? a.slice() : LANE_DEFAULT_A.slice();
+    laneTarget.b = ok ? b.slice() : LANE_DEFAULT_B.slice();
+    laneTarget.boost = ok ? boost : 1;
+  };
+
+  window.webglStats = function webglStats() {
+    return {
+      fallback: hasFallback,
+      tier: hasFallback ? null : qualityKey,
+      fps: !gl || hasFallback || isPaused || contextLost ? 0 : Math.round(1000 / frameMsEma),
+      width: canvas.width,
+      height: canvas.height,
+    };
+  };
 
   const pauseFlags = { modal: false, hidden: false };
 
