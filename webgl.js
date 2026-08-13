@@ -15,6 +15,9 @@
   }
 
   const QUALITY_ORDER = ['low', 'medium', 'high'];
+  // resScale: fraction of device pixels actually rendered. This scene is fragment-bound
+  // (fullscreen procedural noise), so shrinking the backing store is the cheapest lever.
+  // triplanar: three noise projections vs one — roughly a 3x fragment cost difference.
   const QUALITY_PROFILES = {
     high: {
       segments: 72,
@@ -23,6 +26,8 @@
       laneGlow: true,
       heatDistortion: true,
       lanePulseSpeed: 1.0,
+      resScale: 1.0,
+      triplanar: true,
     },
     medium: {
       segments: 52,
@@ -31,6 +36,8 @@
       laneGlow: true,
       heatDistortion: false,
       lanePulseSpeed: 0.9,
+      resScale: 0.85,
+      triplanar: false,
     },
     low: {
       segments: 32,
@@ -39,6 +46,8 @@
       laneGlow: false,
       heatDistortion: false,
       lanePulseSpeed: 0.8,
+      resScale: 0.7,
+      triplanar: false,
     },
   };
 
@@ -156,19 +165,35 @@
   }
 
   function acquireContext() {
-    return canvas.getContext('webgl', { antialias: true, alpha: false })
-      || canvas.getContext('experimental-webgl', { antialias: true, alpha: false });
+    // MSAA is a fullscreen resolve every frame; only the top tier pays for it.
+    const opts = { antialias: qualityKey === 'high', alpha: false, stencil: false };
+    return canvas.getContext('webgl', opts) || canvas.getContext('experimental-webgl', opts);
   }
+
+  let resizePending = false;
 
   function resize() {
     if (!gl || contextLost) return;
 
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.floor(window.innerWidth * dpr);
-    canvas.height = Math.floor(window.innerHeight * dpr);
-    canvas.style.width = `${window.innerWidth}px`;
-    canvas.style.height = `${window.innerHeight}px`;
+    const cssWidth = window.innerWidth;
+    const cssHeight = window.innerHeight;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2) * quality.resScale;
+
+    canvas.width = Math.max(1, Math.floor(cssWidth * dpr));
+    canvas.height = Math.max(1, Math.floor(cssHeight * dpr));
+    canvas.style.width = `${cssWidth}px`;
+    canvas.style.height = `${cssHeight}px`;
     gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+
+  // Reallocating the backing store is expensive; coalesce resize bursts into one per frame.
+  function requestResize() {
+    if (resizePending) return;
+    resizePending = true;
+    requestAnimationFrame(() => {
+      resizePending = false;
+      resize();
+    });
   }
 
   function compileShader(src, type) {
@@ -355,10 +380,16 @@ void main() {
       gl.uniform1f(uniforms.reduce, state.motionScale);
       gl.uniform1f(uniforms.twinkle, state.qualityKey === 'low' ? 0.0 : 1.0);
 
+      // Stars are sky: no depth test, no depth writes. Also fixes the old depth-scale
+      // mismatch (stars z*0.01 vs canyon z*0.022) that let far stars occlude near walls.
+      gl.disable(gl.DEPTH_TEST);
+      gl.depthMask(false);
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
       gl.drawArrays(gl.POINTS, 0, count);
       gl.disable(gl.BLEND);
+      gl.depthMask(true);
+      gl.enable(gl.DEPTH_TEST);
     }
 
     return { init, rebuild, update, draw };
@@ -417,9 +448,14 @@ uniform float uLaneGlow;
 uniform float uHeat;
 uniform float uPulseSpeed;
 uniform float uOctaves;
+uniform float uTriplanar;
 
+// sin-free hash: noise() calls this 4x, up to 4 octaves x 3 projections per pixel.
+// At ~48 hashes/pixel the transcendental was the dominant fragment cost.
 float hash(vec2 p) {
-  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  vec2 q = fract(p * vec2(233.34, 851.73));
+  q += dot(q, q + 23.45);
+  return fract(q.x * q.y);
 }
 
 float noise(vec2 p) {
@@ -468,10 +504,12 @@ void main() {
   float heatWarp = uHeat > 0.5 ? sin(vPos.z * 0.22 + uTime * 3.1) * 0.035 : 0.0;
   uvY.x += heatWarp;
 
-  float nX = layeredNoise(uvX, uOctaves);
-  float nY = layeredNoise(uvY, uOctaves);
-  float nZ = layeredNoise(uvZ, uOctaves);
-  float tex = (nX * 0.35 + nY * 0.45 + nZ * 0.20);
+  // Uniform branch — no divergence within a draw. Below 'high' a single projection
+  // carries the texture; the two extra fetches aren't worth 3x the fragment cost.
+  float tex = layeredNoise(uvY, uOctaves);
+  if (uTriplanar > 0.5) {
+    tex = tex * 0.45 + layeredNoise(uvX, uOctaves) * 0.35 + layeredNoise(uvZ, uOctaves) * 0.20;
+  }
 
   vec3 baseCol = vec3(0.035, 0.075, 0.18);
   baseCol += vec3(0.025, 0.04, 0.08) * tex;
@@ -492,6 +530,10 @@ void main() {
   float fog = smoothstep(0.25, 1.0, vDepth);
   col = mix(col, vec3(0.01, 0.018, 0.04), fog);
 
+  // Grade in-shader. A CSS filter on the canvas costs a fullscreen composite pass
+  // every frame; saturate + lift here is ~6 ALU ops instead.
+  col = mix(vec3(dot(col, vec3(0.299, 0.587, 0.114))), col, 1.24) * 1.14;
+
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -510,6 +552,7 @@ void main() {
       heat: null,
       pulseSpeed: null,
       octaves: null,
+      triplanar: null,
     };
 
     function centerOffset(z) {
@@ -612,6 +655,7 @@ void main() {
       uniforms.heat = gl.getUniformLocation(program, 'uHeat');
       uniforms.pulseSpeed = gl.getUniformLocation(program, 'uPulseSpeed');
       uniforms.octaves = gl.getUniformLocation(program, 'uOctaves');
+      uniforms.triplanar = gl.getUniformLocation(program, 'uTriplanar');
 
       return buildGeometry(profile);
     }
@@ -645,6 +689,7 @@ void main() {
       gl.uniform1f(uniforms.heat, state.profile.heatDistortion ? 1.0 : 0.0);
       gl.uniform1f(uniforms.pulseSpeed, state.profile.lanePulseSpeed * state.motionScale);
       gl.uniform1f(uniforms.octaves, state.profile.fbmOctaves);
+      gl.uniform1f(uniforms.triplanar, state.profile.triplanar ? 1.0 : 0.0);
 
       gl.drawArrays(gl.TRIANGLES, 0, count);
     }
@@ -997,6 +1042,7 @@ void main() {
     }
 
     applyQualityMeta(qualityKey);
+    resize();
   }
 
   function updatePerformance(frameMs) {
@@ -1180,7 +1226,7 @@ void main() {
       targetMouseY = (touch.clientY / window.innerHeight) * 2 - 1;
     }, { passive: true });
 
-    window.addEventListener('resize', resize);
+    window.addEventListener('resize', requestResize);
 
     canvas.addEventListener('webglcontextlost', (event) => {
       event.preventDefault();
@@ -1208,20 +1254,40 @@ void main() {
     }, false);
   }
 
-  window.pauseWebGL = function pauseWebGL() {
-    isPaused = true;
-    if (animationId) {
-      cancelAnimationFrame(animationId);
-      animationId = null;
+  const pauseFlags = { modal: false, hidden: false };
+
+  function syncPaused() {
+    const shouldPause = pauseFlags.modal || pauseFlags.hidden;
+    if (shouldPause === isPaused) return;
+    isPaused = shouldPause;
+
+    if (isPaused) {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+      return;
     }
+
+    if (hasFallback || contextLost || !gl) return;
+    prevTimeMs = performance.now();
+    animationId = requestAnimationFrame(render);
+  }
+
+  window.pauseWebGL = function pauseWebGL() {
+    pauseFlags.modal = true;
+    syncPaused();
   };
 
   window.resumeWebGL = function resumeWebGL() {
-    if (!isPaused || hasFallback || contextLost || !gl) return;
-    isPaused = false;
-    prevTimeMs = performance.now();
-    animationId = requestAnimationFrame(render);
+    pauseFlags.modal = false;
+    syncPaused();
   };
+
+  document.addEventListener('visibilitychange', () => {
+    pauseFlags.hidden = document.hidden;
+    syncPaused();
+  });
 
   setupEvents();
 

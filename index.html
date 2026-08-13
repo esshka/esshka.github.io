@@ -10,151 +10,208 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="hud.css">
   <link rel="stylesheet" href="modal_styles.css">
 </head>
 
 <body>
   <canvas id="canyon" aria-hidden="true"></canvas>
 
-  <main class="content" id="pageContent">
-    <section class="layout-hero">
-      <div class="section-hero reveal reveal-1">
-        <div class="hero-badge">Belgrade, Serbia</div>
-        <h1>Evgenii Shevchenko</h1>
-        <p class="subtitle">Software Engineer | Ruby/Python/Java/Clojure, Generative AI, Algo Trading, Event Sourcing/CQRS/DDD, Computer Vision, Real-time Systems, Modern UI</p>
-        <p class="tagline">15+ years building complex, high-performance systems across Generative AI, computer vision, algorithmic trading, fintech/DeFi, and real-time platforms.</p>
+  <div class="hud-frame" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
 
-        <div class="trust-strip">
-          <span>15+ years</span>
-          <span>Top Rated Plus</span>
-          <span>100% Job Success</span>
+  <main class="hud" id="pageContent">
+    <div class="hud-topbar reveal reveal-1">
+      <span><b>ESSHKA</b> / SOFTWARE ENGINEER</span>
+      <span class="drop">BELGRADE · SERBIA · UTC+1</span>
+      <span class="live">AVAILABLE FOR CONTRACT</span>
+    </div>
+
+    <div class="hud-grid">
+      <section class="panel panel-hero reveal reveal-2">
+        <div class="panel-head">Operator <em>/ 01</em></div>
+
+        <h1 class="callsign">Evgenii<br>Shevchenko</h1>
+
+        <p class="role">Ruby · Python · Java · Clojure — Generative AI, algorithmic trading,
+          event sourcing / CQRS / DDD, computer vision, real-time systems.</p>
+
+        <p class="tagline">15+ years building complex, high-performance systems across generative AI,
+          computer vision, algorithmic trading, fintech/DeFi, and real-time platforms.</p>
+
+        <dl class="readout">
+          <div>
+            <dt>Experience</dt>
+            <dd>15+ YRS</dd>
+          </div>
+          <div>
+            <dt>Upwork</dt>
+            <dd>TOP RATED+</dd>
+          </div>
+          <div>
+            <dt>Job success</dt>
+            <dd>100%</dd>
+          </div>
+        </dl>
+
+        <div class="actions">
+          <a href="https://www.upwork.com/freelancers/~01cd0a1946156a02a1" class="btn btn-primary" target="_blank"
+            rel="noopener noreferrer">Hire me</a>
+          <button class="btn" type="button" data-modal-trigger="servicesModal">Services</button>
+          <button class="btn" type="button" data-modal-trigger="achievementsModal">Track record</button>
         </div>
 
-        <div class="cta-actions">
-          <a href="https://www.upwork.com/freelancers/~01cd0a1946156a02a1" class="cta-button" target="_blank"
-            rel="noopener noreferrer">
-            Hire Me on Upwork
-          </a>
-          <button class="services-button" id="servicesBtn" type="button" data-modal-trigger="servicesModal">
-            View Services
-          </button>
-          <button class="services-button" id="achievementsBtn" type="button" data-modal-trigger="achievementsModal">
-            Track Record
-          </button>
-        </div>
+        <p class="contact"><a href="mailto:esshka@gmail.com">esshka@gmail.com</a></p>
 
-        <p class="cta-note">esshka@gmail.com • 100% Job Success Score on Upwork</p>
-
-        <section class="social-links" aria-label="Social links">
+        <nav class="links" aria-label="Social links">
           <a href="https://github.com/esshka" target="_blank" rel="noopener noreferrer" title="GitHub"
             aria-label="GitHub">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path
                 d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
             </svg>
           </a>
           <a href="mailto:esshka@gmail.com" title="Email" aria-label="Email">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path
                 d="M2 5h20a1 1 0 011 1v12a1 1 0 01-1 1H2a1 1 0 01-1-1V6a1 1 0 011-1zm10 7.2L3.7 7h16.6L12 12.2zm9-3.86l-8.4 5.27a1 1 0 01-1.2 0L3 8.34V17h18V8.34z" />
             </svg>
           </a>
           <a href="https://x.com/genesshk" target="_blank" rel="noopener noreferrer" title="Twitter"
             aria-label="Twitter">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path
                 d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
           </a>
           <a href="https://www.upwork.com/freelancers/~01cd0a1946156a02a1" target="_blank" rel="noopener noreferrer"
             title="Upwork" aria-label="Upwork">
-            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path
                 d="M18.561 13.158c-1.102 0-2.135-.467-3.074-1.227l.228-1.076.008-.042c.207-1.143.849-3.06 2.839-3.06 1.492 0 2.703 1.212 2.703 2.703-.001 1.489-1.212 2.702-2.704 2.702zm0-8.14c-2.539 0-4.51 1.649-5.31 4.366-1.22-1.834-2.148-4.036-2.687-5.892H7.828v7.112c-.002 1.406-1.141 2.546-2.547 2.546-1.405 0-2.543-1.14-2.543-2.546V3.492H0v7.112c0 2.914 2.37 5.303 5.281 5.303 2.913 0 5.283-2.389 5.283-5.303v-1.19c.529 1.107 1.182 2.229 1.974 3.221l-1.673 7.873h2.797l1.213-5.71c1.063.679 2.285 1.109 3.686 1.109 3 0 5.439-2.452 5.439-5.45 0-3-2.439-5.439-5.439-5.439z" />
             </svg>
           </a>
+        </nav>
+      </section>
+
+      <div class="hud-col">
+        <section class="panel reveal reveal-3">
+          <div class="panel-head">Core systems <em>/ 04 online</em></div>
+          <div class="rows">
+            <article class="row">
+              <span class="row-idx">01</span>
+              <div class="row-body">
+                <h3>Generative AI &amp; Machine Learning</h3>
+                <p>Agentic systems, MCPs, hybrid RAG, fine-tuning, reinforcement learning, neuroevolution</p>
+              </div>
+              <div class="row-meter"><span class="meter"><i style="--v:.96"></i></span>ACTIVE</div>
+            </article>
+            <article class="row">
+              <span class="row-idx">02</span>
+              <div class="row-body">
+                <h3>Algo Trading &amp; Real-Time Systems</h3>
+                <p>Market making, low-latency execution, streaming data, exchange integrations</p>
+              </div>
+              <div class="row-meter"><span class="meter"><i style="--v:.92"></i></span>ACTIVE</div>
+            </article>
+            <article class="row">
+              <span class="row-idx">03</span>
+              <div class="row-body">
+                <h3>Architecture &amp; Patterns</h3>
+                <p>EDA, CQRS, event sourcing, DDD, hexagonal and clean architecture</p>
+              </div>
+              <div class="row-meter"><span class="meter"><i style="--v:.98"></i></span>ACTIVE</div>
+            </article>
+            <article class="row">
+              <span class="row-idx">04</span>
+              <div class="row-body">
+                <h3>Modern UI &amp; Visualization</h3>
+                <p>React, Svelte, Next.js, state architecture, Canvas/WebGL, SSR</p>
+              </div>
+              <div class="row-meter"><span class="meter"><i style="--v:.88"></i></span>ACTIVE</div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel reveal reveal-4">
+          <div class="panel-head">Service bus <em>/ open</em></div>
+          <div class="rows">
+            <article class="row">
+              <span class="row-idx">01</span>
+              <div class="row-body">
+                <h3>Technical Architecture Review</h3>
+                <p>Event-driven architecture, bounded contexts, resilience, scalability, and delivery risks.</p>
+              </div>
+            </article>
+            <article class="row">
+              <span class="row-idx">02</span>
+              <div class="row-body">
+                <h3>AI/ML Strategy</h3>
+                <p>Agentic systems, advanced RAG, computer vision, and production inference pipelines.</p>
+              </div>
+            </article>
+            <article class="row">
+              <span class="row-idx">03</span>
+              <div class="row-body">
+                <h3>Full-Stack Development</h3>
+                <p>Ruby on Rails, Python/FastAPI, TypeScript, React, Svelte, Java, and Clojure systems.</p>
+              </div>
+            </article>
+            <article class="row">
+              <span class="row-idx">04</span>
+              <div class="row-body">
+                <h3>Algorithmic Trading Platforms</h3>
+                <p>Execution engines, risk systems, market data distribution, and strategy research.</p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel reveal reveal-4">
+          <div class="panel-head">Flight log <em>/ selected</em></div>
+          <div class="rows">
+            <article class="row">
+              <span class="row-idx">01</span>
+              <div class="row-body">
+                <h3>Generative AI &amp; Agentic Systems</h3>
+                <p>Custom agentic pipelines and production RAG combining vector search with knowledge graphs.</p>
+              </div>
+              <div class="row-meter">AI</div>
+            </article>
+            <article class="row">
+              <span class="row-idx">02</span>
+              <div class="row-body">
+                <h3>High-Frequency Trading</h3>
+                <p>Market-making and event-sourced trading infrastructure in Java, Clojure, and Python.</p>
+              </div>
+              <div class="row-meter">HFT</div>
+            </article>
+            <article class="row">
+              <span class="row-idx">03</span>
+              <div class="row-body">
+                <h3>Real-Time Metaverse Platform</h3>
+                <p>Core architecture for a 500k+ LOC real-time PWA with heavy backend logic.</p>
+              </div>
+              <div class="row-meter">RT</div>
+            </article>
+            <article class="row">
+              <span class="row-idx">04</span>
+              <div class="row-body">
+                <h3>WebRTC Communication Platform</h3>
+                <p>Signaling, TURN/STUN, presence, and Blue/Green deployment pipelines.</p>
+              </div>
+              <div class="row-meter">RTC</div>
+            </article>
+          </div>
         </section>
       </div>
+    </div>
 
-      <div class="layout-side reveal reveal-2">
-        <section class="section-card">
-          <h2>Core Expertise</h2>
-          <div class="expertise-grid">
-            <article class="expertise-card">
-              <span class="icon" aria-hidden="true">🧠</span>
-              <h3>Generative AI & Machine Learning</h3>
-              <p>Agentic systems, MCPs, hybrid RAG, fine-tuning, reinforcement learning, neuroevolution</p>
-            </article>
-            <article class="expertise-card">
-              <span class="icon" aria-hidden="true">📈</span>
-              <h3>Algo Trading & Real-Time Systems</h3>
-              <p>Market making, low-latency execution, streaming data, exchange integrations</p>
-            </article>
-            <article class="expertise-card">
-              <span class="icon" aria-hidden="true">⚡</span>
-              <h3>Architecture & Patterns</h3>
-              <p>EDA, CQRS, event sourcing, DDD, hexagonal and clean architecture</p>
-            </article>
-            <article class="expertise-card">
-              <span class="icon" aria-hidden="true">👁️</span>
-              <h3>Modern UI & Visualization</h3>
-              <p>React, Svelte, Next.js, state architecture, Canvas/WebGL, SSR</p>
-            </article>
-          </div>
-        </section>
-
-        <section class="section-card section-preview reveal reveal-3">
-          <h2>Services Snapshot</h2>
-          <div class="preview-grid">
-            <article class="preview-card">
-              <h3>Technical Architecture Review</h3>
-              <p>Event-driven architecture, bounded contexts, resilience, scalability, and delivery risks.</p>
-            </article>
-            <article class="preview-card">
-              <h3>AI/ML Strategy</h3>
-              <p>Agentic systems, advanced RAG, computer vision, and production inference pipelines.</p>
-            </article>
-            <article class="preview-card">
-              <h3>Full-Stack Development</h3>
-              <p>Ruby on Rails, Python/FastAPI, TypeScript, React, Svelte, Java, and Clojure systems.</p>
-            </article>
-            <article class="preview-card">
-              <h3>Algorithmic Trading Platforms</h3>
-              <p>Execution engines, risk systems, market data distribution, and strategy research.</p>
-            </article>
-          </div>
-        </section>
-
-        <section class="section-card section-preview reveal reveal-4">
-          <h2>Track Record Snapshot</h2>
-          <div class="preview-grid">
-            <article class="preview-card">
-              <h3>Generative AI & Agentic Systems</h3>
-              <p>Built custom agentic pipelines and production RAG systems combining vector search with knowledge graphs.</p>
-            </article>
-            <article class="preview-card">
-              <h3>High-Frequency Trading & Low-Latency Systems</h3>
-              <p>Engineered market-making and event-sourced trading infrastructure in Java, Clojure, and Python.</p>
-            </article>
-            <article class="preview-card">
-              <h3>Real-Time Metaverse Platform</h3>
-              <p>Owned core architecture for a 500k+ LOC real-time PWA with heavy backend logic.</p>
-            </article>
-            <article class="preview-card">
-              <h3>WebRTC Communication Platform</h3>
-              <p>Shipped signaling, TURN/STUN, presence, and Blue/Green deployment pipelines.</p>
-            </article>
-          </div>
-        </section>
-      </div>
-    </section>
-
-    <section class="tech-stack section-card reveal reveal-5">
-      <h2>Technology Stack</h2>
-      <div class="tech-pills">
+    <section class="panel reveal reveal-5">
+      <div class="panel-head">Loadout <em>/ 27 modules</em></div>
+      <div class="loadout">
         <span>Ruby</span><span>Python</span><span>Java</span><span>Clojure</span><span>TypeScript</span><span>JavaScript</span><span>C#</span>
         <span>Rails</span><span>FastAPI</span><span>React</span><span>Svelte</span><span>Next.js</span>
         <span>LangChain</span><span>LlamaIndex</span><span>PyTorch</span><span>TensorFlow</span>
@@ -162,20 +219,17 @@
         <span>Docker</span><span>GitHub Actions</span><span>Prometheus</span><span>Grafana</span><span>WebSockets</span><span>gRPC</span>
       </div>
     </section>
-
   </main>
 
   <div class="mobile-sticky-cta">
-    <a href="https://www.upwork.com/freelancers/~01cd0a1946156a02a1" class="cta-button" target="_blank"
-      rel="noopener noreferrer">
-      Hire Me on Upwork
-    </a>
+    <a href="https://www.upwork.com/freelancers/~01cd0a1946156a02a1" class="btn btn-primary" target="_blank"
+      rel="noopener noreferrer">Hire me on Upwork</a>
   </div>
 
   <div class="modal-backdrop" id="servicesModal" data-modal role="dialog" aria-modal="true" aria-hidden="true"
     aria-labelledby="servicesTitle" aria-describedby="servicesIntro" hidden>
     <div class="modal-content" tabindex="-1">
-      <button class="modal-close" id="closeModal" type="button" data-close aria-label="Close services modal">&times;</button>
+      <button class="modal-close" type="button" data-close aria-label="Close services modal">&times;</button>
       <h2 id="servicesTitle">Services Provided</h2>
       <p class="modal-intro" id="servicesIntro">
         I provide consulting and software development services. I am available for contract work, advisory roles, and
@@ -187,8 +241,8 @@
         <p class="section-desc">I help companies solve complex technical challenges:</p>
         <ul>
           <li><strong>Technical Architecture Review</strong> — I will analyze your existing system and provide
-            recommendations
-            for improvement across event-driven design, scalability, resilience, and delivery risks.</li>
+            recommendations for improvement across event-driven design, scalability, resilience, and delivery risks.
+          </li>
           <li><strong>AI/ML Strategy</strong> — Helping teams design agentic systems, advanced RAG, computer vision,
             and production inference pipelines.</li>
           <li><strong>Technology Advisory</strong> — Unbiased guidance on technology choices based on your specific
@@ -241,67 +295,73 @@
   <div class="modal-backdrop" id="achievementsModal" data-modal role="dialog" aria-modal="true" aria-hidden="true"
     aria-labelledby="achievementsTitle" aria-describedby="achievementsIntro" hidden>
     <div class="modal-content" tabindex="-1">
-      <button class="modal-close" id="closeAchievements" type="button" data-close
-        aria-label="Close achievements modal">&times;</button>
-      <h2 id="achievementsTitle">Capabilities & Outcomes</h2>
+      <button class="modal-close" type="button" data-close aria-label="Close achievements modal">&times;</button>
+      <h2 id="achievementsTitle">Capabilities &amp; Outcomes</h2>
       <p class="modal-intro" id="achievementsIntro">
         Selected outcomes and areas of work from confidential projects.
       </p>
 
       <div class="achievements-timeline">
         <div class="achievement-item">
-          <div class="achievement-icon">🤖</div>
+          <div class="achievement-idx">01</div>
           <div class="achievement-content">
-            <h4>Generative AI & Agentic Systems</h4>
+            <h4>Generative AI &amp; Agentic Systems</h4>
             <ul class="achievement-list">
               <li>Architected and delivered custom generative agentic pipelines for multi-step market analysis</li>
-              <li>Built production-grade RAG systems combining vector search with knowledge graphs for high-precision retrieval</li>
+              <li>Built production-grade RAG systems combining vector search with knowledge graphs for high-precision
+                retrieval</li>
               <li>Applied reinforcement learning and neuroevolution in adaptive trading research</li>
             </ul>
           </div>
         </div>
 
         <div class="achievement-item">
-          <div class="achievement-icon">⚡</div>
+          <div class="achievement-idx">02</div>
           <div class="achievement-content">
-            <h4>High-Frequency Trading & Low-Latency Systems</h4>
+            <h4>High-Frequency Trading &amp; Low-Latency Systems</h4>
             <ul class="achievement-list">
-              <li>Engineered market-making systems in Java, Clojure, and Python using Avellaneda-Stoikov-based strategies</li>
-              <li>Designed event-sourced order intake and settlement engines with Java hot paths for lower p99 latency</li>
-              <li>Built gRPC/Protobuf and WebSocket interfaces for high-QPS market data distribution with batching and back-pressure</li>
+              <li>Engineered market-making systems in Java, Clojure, and Python using Avellaneda-Stoikov-based
+                strategies</li>
+              <li>Designed event-sourced order intake and settlement engines with Java hot paths for lower p99 latency
+              </li>
+              <li>Built gRPC/Protobuf and WebSocket interfaces for high-QPS market data distribution with batching and
+                back-pressure</li>
             </ul>
           </div>
         </div>
 
         <div class="achievement-item">
-          <div class="achievement-icon">🌍</div>
+          <div class="achievement-idx">03</div>
           <div class="achievement-content">
             <h4>Real-Time Platform Architecture</h4>
             <ul class="achievement-list">
               <li>Owned core architecture for a 500k+ LOC PWA with heavy backend logic</li>
               <li>Implemented ingestion and fan-out pipelines using Java, Clojure, Kafka, and WebSockets</li>
               <li>Built geo-visualization tooling with Mapbox GL JS and HTML5 Canvas for millions of virtual assets</li>
-              <li>Re-architected React + MobX state management for high-frequency updates and stricter performance budgets</li>
+              <li>Re-architected React + MobX state management for high-frequency updates and stricter performance
+                budgets</li>
             </ul>
           </div>
         </div>
 
         <div class="achievement-item">
-          <div class="achievement-icon">📹</div>
+          <div class="achievement-idx">04</div>
           <div class="achievement-content">
             <h4>WebRTC Communication Platform</h4>
             <ul class="achievement-list">
-              <li>Shipped end-to-end WebRTC infrastructure with Node.js and Ruby on Rails signaling, TURN/STUN, and session orchestration</li>
-              <li>Implemented Redis-backed presence systems and hardened failure modes for packet loss and call setup issues</li>
+              <li>Shipped end-to-end WebRTC infrastructure with Node.js and Ruby on Rails signaling, TURN/STUN, and
+                session orchestration</li>
+              <li>Implemented Redis-backed presence systems and hardened failure modes for packet loss and call setup
+                issues</li>
               <li>Maintained Blue/Green deployment pipelines on AWS with structured logging and distributed tracing</li>
             </ul>
           </div>
         </div>
 
         <div class="achievement-item">
-          <div class="achievement-icon">🔍</div>
+          <div class="achievement-idx">05</div>
           <div class="achievement-content">
-            <h4>Enterprise Search & Content Platform</h4>
+            <h4>Enterprise Search &amp; Content Platform</h4>
             <ul class="achievement-list">
               <li>Architected Elasticsearch layer with custom analyzers and zero-downtime reindexing</li>
               <li>Redesigned PostgreSQL schemas using JSONB and GIN indexes for flexible content models</li>
@@ -311,11 +371,12 @@
         </div>
 
         <div class="achievement-item">
-          <div class="achievement-icon">🎭</div>
+          <div class="achievement-idx">06</div>
           <div class="achievement-content">
             <h4>Real-Time Ticketing Platform</h4>
             <ul class="achievement-list">
-              <li>Architected and developed a complex ticketing UI using React + MobX for seat selection and real-time interactions</li>
+              <li>Architected and developed a complex ticketing UI using React + MobX for seat selection and real-time
+                interactions</li>
               <li>Decoupled monolith into bounded contexts following DDD principles</li>
               <li>Built an idempotent booking engine preventing overselling</li>
             </ul>
@@ -323,14 +384,17 @@
         </div>
 
         <div class="achievement-item">
-          <div class="achievement-icon">🚀</div>
+          <div class="achievement-idx">07</div>
           <div class="achievement-content">
-            <h4>Foundations & Cross-Domain Experience</h4>
+            <h4>Foundations &amp; Cross-Domain Experience</h4>
             <ul class="achievement-list">
-              <li>Built an ML-driven personal diet diary and e-commerce platform with React, MobX, Python, Ruby on Rails, and Java</li>
-              <li>Led security audits and zero-downtime migrations for real-time gaming state using Ruby on Rails and React</li>
+              <li>Built an ML-driven personal diet diary and e-commerce platform with React, MobX, Python, Ruby on
+                Rails, and Java</li>
+              <li>Led security audits and zero-downtime migrations for real-time gaming state using Ruby on Rails and
+                React</li>
               <li>Historic mastery in the C#/.NET ecosystem with MCSD certification</li>
-              <li>Advanced academic foundation in applied mathematics, computer systems, algorithms, probability, and neural networks</li>
+              <li>Advanced academic foundation in applied mathematics, computer systems, algorithms, probability, and
+                neural networks</li>
             </ul>
           </div>
         </div>
@@ -361,142 +425,11 @@
   </div>
 
   <div class="hotkey-hint">
-    <span class="key">Space</span> to toggle overlay
+    <span class="key">Space</span> hide overlay
   </div>
 
   <script src="webgl.js"></script>
-  <script>
-    const body = document.body;
-    const content = document.getElementById('pageContent');
-    const hint = document.querySelector('.hotkey-hint');
-    const modalEls = Array.from(document.querySelectorAll('[data-modal]'));
-    const triggerEls = Array.from(document.querySelectorAll('[data-modal-trigger]'));
-    const focusableSelector = [
-      'a[href]',
-      'button:not([disabled])',
-      'textarea:not([disabled])',
-      'input:not([disabled])',
-      'select:not([disabled])',
-      '[tabindex]:not([tabindex="-1"])'
-    ].join(',');
-
-    let activeModal = null;
-    let lastTrigger = null;
-
-    function getFocusable(modalEl) {
-      return Array.from(modalEl.querySelectorAll(focusableSelector)).filter((el) => {
-        return !el.hasAttribute('hidden') && el.getAttribute('aria-hidden') !== 'true';
-      });
-    }
-
-    function openModal(modalEl, triggerEl) {
-      if (!modalEl) return;
-      if (activeModal && activeModal !== modalEl) {
-        closeModal(activeModal, false);
-      }
-
-      lastTrigger = triggerEl || document.activeElement;
-      modalEl.hidden = false;
-      modalEl.setAttribute('aria-hidden', 'false');
-      requestAnimationFrame(() => {
-        modalEl.classList.add('active');
-      });
-
-      body.classList.add('modal-open');
-      activeModal = modalEl;
-
-      if (window.pauseWebGL) {
-        window.pauseWebGL();
-      }
-
-      setTimeout(() => {
-        const focusables = getFocusable(modalEl);
-        const target = focusables[0] || modalEl.querySelector('.modal-content') || modalEl;
-        target.focus();
-      }, 10);
-    }
-
-    function closeModal(modalEl, restoreFocus = true) {
-      if (!modalEl || modalEl.hidden) return;
-
-      modalEl.classList.remove('active');
-      modalEl.setAttribute('aria-hidden', 'true');
-
-      window.setTimeout(() => {
-        modalEl.hidden = true;
-
-        if (activeModal === modalEl) {
-          activeModal = null;
-        }
-
-        const anotherOpen = modalEls.some((modalNode) => !modalNode.hidden);
-        if (!anotherOpen) {
-          body.classList.remove('modal-open');
-          if (window.resumeWebGL) {
-            window.resumeWebGL();
-          }
-        }
-
-        if (restoreFocus && lastTrigger && typeof lastTrigger.focus === 'function') {
-          lastTrigger.focus();
-        }
-      }, 260);
-    }
-
-    function trapFocus(event) {
-      if (!activeModal || event.key !== 'Tab') return;
-
-      const focusables = getFocusable(activeModal);
-      if (focusables.length === 0) return;
-
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-
-    triggerEls.forEach((trigger) => {
-      trigger.addEventListener('click', () => {
-        const modalId = trigger.getAttribute('data-modal-trigger');
-        const modalEl = document.getElementById(modalId);
-        openModal(modalEl, trigger);
-      });
-    });
-
-    document.querySelectorAll('[data-close]').forEach((closeButton) => {
-      closeButton.addEventListener('click', () => {
-        closeModal(closeButton.closest('[data-modal]'));
-      });
-    });
-
-    modalEls.forEach((modalEl) => {
-      modalEl.addEventListener('click', (event) => {
-        if (event.target === modalEl) {
-          closeModal(modalEl);
-        }
-      });
-    });
-
-    document.addEventListener('keydown', (event) => {
-      if (event.code === 'Space' && !activeModal && (event.target === document.body || event.target === document.documentElement)) {
-        event.preventDefault();
-        body.classList.toggle('overlay-hidden');
-        hint.style.opacity = body.classList.contains('overlay-hidden') ? '0.55' : '1';
-      }
-
-      if (event.key === 'Escape' && activeModal) {
-        closeModal(activeModal);
-      }
-
-      trapFocus(event);
-    });
-  </script>
+  <script src="ui.js"></script>
 </body>
 
 </html>

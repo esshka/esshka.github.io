@@ -1,0 +1,426 @@
+/*
+  /Users/esshka/hireme/hud.css
+  Cockpit-HUD components: panels, hero readout, bracket buttons, instrument rows.
+  Loads after styles.css. All media queries live here so responsive overrides win
+  the cascade over the component rules they adjust.
+  RELEVANT FILES: styles.css, index.html, modal_styles.css
+*/
+
+/* ---- Panel: corner ticks, hairline rules, near-transparent fill ---- */
+
+.panel {
+  position: relative;
+  background: var(--panel-fill);
+  border: 1px solid var(--line-soft);
+  padding: 1.05rem 1.15rem 1.2rem;
+}
+
+.panel::before,
+.panel::after {
+  content: '';
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--amber);
+  opacity: 0.8;
+}
+
+.panel::before {
+  top: -1px;
+  left: -1px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-left: 0;
+  border-top: 0;
+}
+
+.panel-hero {
+  position: sticky;
+  top: 1.4rem;
+  padding: 1.4rem 1.35rem 1.5rem;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: var(--tick);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 0.95rem;
+}
+
+.panel-head::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--line), transparent);
+}
+
+.panel-head em {
+  font-style: normal;
+  color: var(--mute);
+  letter-spacing: 0.14em;
+}
+
+/* ---- Hero ---- */
+
+.callsign {
+  font-family: var(--sans);
+  font-size: clamp(2.3rem, 4.6vw, 3.7rem);
+  line-height: 0.94;
+  letter-spacing: -0.035em;
+  color: #fff;
+  text-shadow: 0 0 34px rgba(3, 6, 14, 0.9);
+}
+
+.role {
+  margin-top: 0.7rem;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  color: var(--ink-dim);
+}
+
+.tagline {
+  margin-top: 0.6rem;
+  padding-left: 0.7rem;
+  border-left: 1px solid var(--cyan-dim);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--mute);
+}
+
+.readout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.3rem;
+  margin: 1.15rem 0 1.2rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.readout div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.readout dt {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+.readout dd {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--cyan);
+}
+
+/* ---- Bracket buttons ---- */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.62rem 0.95rem;
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  color: var(--ink);
+  background: rgba(6, 12, 24, 0.55);
+  border: 1px solid var(--line);
+  transition: color 180ms ease, border-color 180ms ease, background-color 180ms ease;
+}
+
+.btn::before {
+  content: '[';
+  color: var(--mute);
+  transition: color 180ms ease;
+}
+
+.btn::after {
+  content: ']';
+  color: var(--mute);
+  transition: color 180ms ease;
+}
+
+.btn:hover {
+  color: var(--amber-hot);
+  border-color: var(--amber);
+  background: rgba(255, 162, 58, 0.09);
+}
+
+.btn:hover::before,
+.btn:hover::after {
+  color: var(--amber);
+}
+
+.btn-primary {
+  color: var(--void);
+  background: var(--amber);
+  border-color: var(--amber);
+}
+
+.btn-primary::before,
+.btn-primary::after {
+  color: rgba(3, 6, 14, 0.5);
+}
+
+.btn-primary:hover {
+  color: var(--void);
+  background: var(--amber-hot);
+  border-color: var(--amber-hot);
+}
+
+.btn-primary:hover::before,
+.btn-primary:hover::after {
+  color: rgba(3, 6, 14, 0.5);
+}
+
+.contact {
+  margin-top: 0.9rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--mute);
+}
+
+.contact a {
+  color: var(--ink-dim);
+  text-decoration: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.contact a:hover {
+  color: var(--amber-hot);
+  border-color: var(--amber);
+}
+
+.links {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.95rem;
+}
+
+.links a {
+  width: 2.1rem;
+  height: 2.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mute);
+  border: 1px solid var(--line-soft);
+  transition: color 180ms ease, border-color 180ms ease;
+}
+
+.links a:hover {
+  color: var(--amber-hot);
+  border-color: var(--amber);
+}
+
+.links svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ---- Instrument rows ---- */
+
+.rows {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 2.1rem 1fr auto;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.6rem 0.35rem;
+  border-top: 1px solid var(--line-soft);
+  transition: background-color 180ms ease;
+}
+
+.row:first-child {
+  border-top: 0;
+}
+
+.row:hover {
+  background: rgba(255, 162, 58, 0.05);
+}
+
+.row-idx {
+  font-size: 0.7rem;
+  color: var(--amber);
+  opacity: 0.75;
+}
+
+.row-body h3 {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+
+.row-body p {
+  margin-top: 0.24rem;
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--mute);
+}
+
+.row-meter {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--cyan);
+}
+
+.meter {
+  display: block;
+  width: 46px;
+  height: 4px;
+  background: rgba(150, 190, 235, 0.2);
+  overflow: hidden;
+}
+
+.meter i {
+  display: block;
+  height: 100%;
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--cyan-dim);
+  transform-origin: left center;
+  transform: scaleX(var(--v, 0.9));
+  animation: sweep 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* ---- Loadout ---- */
+
+.loadout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.34rem;
+}
+
+.loadout span {
+  padding: 0.3rem 0.5rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+  border: 1px solid var(--line-soft);
+  transition: color 180ms ease, border-color 180ms ease;
+}
+
+.loadout span:hover {
+  color: var(--cyan);
+  border-color: var(--cyan-dim);
+}
+
+/* ---- Responsive ---- */
+
+@media (max-width: 1150px) {
+  .hud {
+    width: min(100% - 2.6rem, 1020px);
+  }
+
+  .hud-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-hero {
+    position: static;
+  }
+}
+
+@media (max-width: 860px) {
+  .hud-frame {
+    inset: 0.5rem;
+  }
+
+  .hud {
+    width: calc(100% - 1.8rem);
+    padding-bottom: 5.6rem;
+    gap: 0.85rem;
+  }
+
+  .hud-grid,
+  .hud-col {
+    gap: 0.85rem;
+  }
+
+  .hud-topbar .drop {
+    display: none;
+  }
+
+  .actions .btn {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+
+  .row {
+    grid-template-columns: 1.8rem 1fr;
+  }
+
+  .row-meter {
+    grid-column: 2;
+    margin-top: 0.3rem;
+  }
+
+  .hotkey-hint {
+    display: none;
+  }
+
+  .mobile-sticky-cta {
+    display: block;
+    position: fixed;
+    z-index: 16;
+    left: 0.7rem;
+    right: 0.7rem;
+    bottom: 0.7rem;
+  }
+
+  .mobile-sticky-cta .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+
+  .meter i {
+    transform: scaleX(var(--v, 0.9));
+  }
+}

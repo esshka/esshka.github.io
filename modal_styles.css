@@ -1,303 +1,278 @@
 /*
   /Users/esshka/hireme/modal_styles.css
-  Modal-specific styles for services and achievements dialogs
-  RELEVANT FILES: index.html, styles.css
+  HUD-consistent modal surfaces: hairline rules, corner ticks, mono labels.
+  RELEVANT FILES: index.html, styles.css, ui.js
 */
-
-.modal-backdrop[hidden] {
-  display: none;
-}
 
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 40;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 1rem;
-  background: rgba(4, 8, 16, 0.72);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  padding: clamp(1rem, 4vh, 3rem) 1rem;
+  overflow-y: auto;
+  background: rgba(2, 4, 10, 0.9);
   opacity: 0;
-  pointer-events: none;
-  transition: opacity 220ms ease;
+  transition: opacity 240ms ease;
+}
+
+/* Author `display: flex` outranks the UA sheet's [hidden] rule, so restate it. */
+.modal-backdrop[hidden] {
+  display: none;
 }
 
 .modal-backdrop.active {
   opacity: 1;
-  pointer-events: auto;
 }
 
 .modal-content {
-  width: min(940px, 100%);
-  max-height: min(90vh, 940px);
-  overflow-y: auto;
   position: relative;
-  background: rgba(8, 13, 26, 0.94);
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  box-shadow: 0 24px 74px rgba(2, 7, 17, 0.65);
-  padding: 2rem;
-  transform: translateY(18px) scale(0.985);
-  transition: transform 240ms cubic-bezier(0.2, 0.7, 0.2, 1);
-}
-
-.modal-content::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  border-radius: 24px 24px 0 0;
-  background: linear-gradient(90deg, transparent, var(--accent), var(--accent-alt), transparent);
-  opacity: 0.82;
+  width: min(920px, 100%);
+  padding: 2rem clamp(1.1rem, 3vw, 2.2rem) 2.2rem;
+  background: #05090f;
+  border: 1px solid var(--line);
+  transform: translateY(16px);
+  transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .modal-backdrop.active .modal-content {
-  transform: translateY(0) scale(1);
+  transform: none;
 }
 
-.modal-content:focus {
-  outline: none;
+.modal-content::before,
+.modal-content::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--amber);
+}
+
+.modal-content::before {
+  top: -1px;
+  left: -1px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.modal-content::after {
+  bottom: -1px;
+  right: -1px;
+  border-left: 0;
+  border-top: 0;
 }
 
 .modal-close {
   position: absolute;
-  top: 0.85rem;
-  right: 0.85rem;
+  top: 0.75rem;
+  right: 0.75rem;
   width: 2rem;
   height: 2rem;
-  border: 1px solid var(--border);
-  background: rgba(4, 7, 16, 0.92);
-  color: var(--muted);
-  border-radius: 999px;
-  font-size: 1.2rem;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 1.3rem;
+  line-height: 1;
   cursor: pointer;
-  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+  color: var(--mute);
+  background: transparent;
+  border: 1px solid var(--line-soft);
+  transition: color 180ms ease, border-color 180ms ease;
 }
 
 .modal-close:hover {
-  background: rgba(9, 14, 28, 0.96);
-  border-color: var(--accent);
-  color: var(--accent-strong);
+  color: var(--amber-hot);
+  border-color: var(--amber);
 }
 
 .modal-content h2 {
-  font-size: clamp(1.5rem, 3vw, 1.95rem);
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-  margin-bottom: 0.85rem;
-  color: var(--ink-strong);
-  padding-right: 2.2rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--amber);
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.9rem;
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .modal-intro {
-  color: var(--muted);
-  font-size: 0.98rem;
-  line-height: 1.62;
-  margin-bottom: 1.35rem;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--ink-dim);
+  margin-bottom: 1.8rem;
+  max-width: 62ch;
 }
 
 .modal-section {
-  margin-bottom: 1.75rem;
+  margin-top: 1.9rem;
 }
 
 .modal-section h3 {
-  font-size: 1.08rem;
-  line-height: 1.35;
-  color: var(--accent-strong);
-  margin-bottom: 0.62rem;
-  padding-bottom: 0.45rem;
-  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  margin-bottom: 0.65rem;
 }
 
 .section-desc {
-  margin-bottom: 0.7rem;
-  color: var(--muted);
+  font-size: 0.78rem;
+  color: var(--mute);
+  margin-bottom: 0.85rem;
 }
 
-.modal-section ul,
-.achievement-list {
+.modal-section ul {
   list-style: none;
-  padding: 0;
+  display: grid;
+  gap: 0.1rem;
 }
 
 .modal-section li {
   position: relative;
-  color: var(--muted);
-  line-height: 1.52;
-  margin-bottom: 0.68rem;
-  padding-left: 1.08rem;
+  padding: 0.62rem 0 0.62rem 1.35rem;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--mute);
+  border-top: 1px solid var(--line-soft);
+}
+
+.modal-section li:first-child {
+  border-top: 0;
 }
 
 .modal-section li::before {
-  content: "•";
+  content: '›';
   position: absolute;
-  left: 0;
-  color: var(--accent);
-  font-weight: 700;
+  left: 0.25rem;
+  color: var(--amber);
+  opacity: 0.8;
 }
 
 .modal-section li strong {
   color: var(--ink);
+  font-weight: 700;
 }
 
-.engagement-grid {
+.engagement-grid,
+.metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 0.7rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.6rem;
 }
 
-.engagement-card {
-  border: 1px solid var(--border);
-  background: rgba(13, 20, 36, 0.92);
-  border-radius: 12px;
-  padding: 0.9rem;
+.engagement-card,
+.metric-card {
+  padding: 0.85rem;
+  border: 1px solid var(--line-soft);
+  transition: border-color 180ms ease;
+}
+
+.engagement-card:hover,
+.metric-card:hover {
+  border-color: var(--amber);
 }
 
 .engagement-card h4 {
+  font-size: 0.76rem;
+  letter-spacing: 0.06em;
   color: var(--ink);
-  margin-bottom: 0.35rem;
-  font-size: 0.9rem;
+  margin-bottom: 0.3rem;
 }
 
 .engagement-card p {
-  color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--mute);
 }
+
+.metric-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  text-align: left;
+}
+
+.metric-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--cyan);
+}
+
+.metric-label {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+/* ---- Flight log timeline ---- */
 
 .achievements-timeline {
-  position: relative;
-  padding-left: 1.5rem;
-  margin-bottom: 1.3rem;
-}
-
-.achievements-timeline::before {
-  content: '';
-  position: absolute;
-  left: 0.55rem;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: linear-gradient(180deg, rgba(255, 122, 24, 0.55), rgba(0, 212, 166, 0.22));
+  display: grid;
+  gap: 0.1rem;
 }
 
 .achievement-item {
-  display: flex;
-  gap: 0.75rem;
-  position: relative;
-  margin-bottom: 1.15rem;
+  display: grid;
+  grid-template-columns: 2.6rem 1fr;
+  gap: 0.6rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--line-soft);
 }
 
-.achievement-icon {
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 50%;
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(255, 122, 24, 0.45);
-  background: rgba(7, 12, 24, 0.95);
-  font-size: 0.92rem;
-  position: relative;
-  z-index: 1;
+.achievement-item:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.achievement-idx {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--amber);
+  opacity: 0.8;
 }
 
 .achievement-content h4 {
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
   color: var(--ink);
-  font-size: 0.98rem;
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.5rem;
 }
 
-.achievement-year {
-  color: var(--accent-alt);
-  font-size: 0.78rem;
-  margin-bottom: 0.42rem;
-  font-weight: 700;
-  font-family: 'JetBrains Mono', 'Space Grotesk', monospace;
+.achievement-list {
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
 }
 
 .achievement-list li {
   position: relative;
-  color: var(--muted);
-  font-size: 0.84rem;
-  line-height: 1.48;
-  padding-left: 1.03rem;
-  margin-bottom: 0.44rem;
+  padding-left: 1rem;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: var(--mute);
 }
 
 .achievement-list li::before {
-  content: '✓';
+  content: '·';
   position: absolute;
-  left: 0;
-  color: var(--accent-strong);
-  font-size: 0.75rem;
-  font-weight: 700;
+  left: 0.2rem;
+  color: var(--cyan);
 }
 
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.65rem;
-}
-
-.metric-card {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(255, 122, 24, 0.15), rgba(0, 212, 166, 0.08));
-  text-align: center;
-  padding: 0.82rem 0.62rem;
-}
-
-.metric-value {
-  display: block;
-  color: var(--ink-strong);
-  font-size: 1.32rem;
-  margin-bottom: 0.1rem;
-}
-
-.metric-label {
-  font-size: 0.7rem;
-  color: var(--muted);
-  font-family: 'JetBrains Mono', 'Space Grotesk', monospace;
-}
-
-@media (max-width: 860px) {
+@media (max-width: 620px) {
   .modal-content {
-    width: min(96vw, 96vw);
-    max-height: 88vh;
-    border-radius: 18px;
-    padding: 1.2rem 1rem;
-  }
-
-  .metrics-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 1.7rem 1rem 1.6rem;
   }
 
   .achievement-item {
-    margin-bottom: 0.95rem;
-  }
-
-  .achievement-content h4 {
-    font-size: 0.91rem;
-  }
-
-  .achievement-list li {
-    font-size: 0.79rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-
-  .modal-backdrop,
-  .modal-content,
-  .modal-close {
-    transition: none !important;
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
   }
 }
