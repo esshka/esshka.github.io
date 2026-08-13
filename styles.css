@@ -198,15 +198,13 @@ body.modal-open {
 
 .hud-grid {
   display: grid;
-  grid-template-columns: minmax(400px, 1fr) minmax(420px, 1fr);
+  /* Hero deliberately narrower than the matrix: the matrix carries two columns
+     of dense text, and the asymmetry stops the page reading as two equal slabs. */
+  grid-template-columns: minmax(340px, 0.82fr) minmax(540px, 1.18fr);
   gap: 1.15rem;
   align-items: start;
 }
 
-.hud-col {
-  display: grid;
-  gap: 1.15rem;
-}
 
 /* ---- Chrome ---- */
 

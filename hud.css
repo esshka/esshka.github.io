@@ -1,6 +1,6 @@
 /*
   /Users/esshka/hireme/hud.css
-  Cockpit-HUD components: panels, hero readout, bracket buttons, instrument rows.
+  Cockpit-HUD components: panels, hero readout, bracket buttons, capability matrix.
   Loads after styles.css. All media queries live here so responsive overrides win
   the cascade over the component rules they adjust.
   RELEVANT FILES: styles.css, index.html, modal_styles.css
@@ -39,9 +39,13 @@
   border-top: 0;
 }
 
+/* Labels sit above their box, never inside it, so both columns start on one
+   baseline and both boxes align at the top edge. */
+.col {
+  min-width: 0;
+}
+
 .panel-hero {
-  position: sticky;
-  top: 1.4rem;
   padding: 1.4rem 1.35rem 1.5rem;
 }
 
@@ -243,58 +247,117 @@
   height: 15px;
 }
 
-/* ---- Instrument rows ---- */
+/* ---- Capability matrix ----
+   Four instruments on one alignment grid. Composition rests on three moves:
+   a large ghosted numeral for scale contrast against the small mono body, a
+   fixed label column so STACK/SHIPPED/OFFER line up across all four tiles,
+   and corner ticks only on the outer corners so the four read as one block. */
 
-.rows {
+
+.matrix {
   display: grid;
-  gap: 0.1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line-soft);
+  border: 1px solid var(--line-soft);
 }
 
-.row {
-  display: grid;
-  grid-template-columns: 2.1rem 1fr auto;
-  align-items: baseline;
-  gap: 0.75rem;
-  padding: 0.6rem 0.35rem;
-  border-top: 1px solid var(--line-soft);
-  transition: background-color 180ms ease;
+.domain {
+  position: relative;
+  overflow: hidden;
+  padding: 1rem 1.05rem 1.1rem;
+  background: var(--panel-fill);
+  transition: background-color 200ms ease;
 }
 
-.row:first-child {
+.domain:hover {
+  background: rgba(255, 162, 58, 0.06);
+}
+
+/* Outer corners only — one bracket around the group, not four around each. */
+.domain:first-child::after,
+.domain:last-child::after {
+  content: '';
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--amber);
+  opacity: 0.8;
+}
+
+.domain:first-child::after {
+  top: 0;
+  left: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.domain:last-child::after {
+  bottom: 0;
+  right: 0;
+  border-left: 0;
   border-top: 0;
 }
 
-.row:hover {
-  background: rgba(255, 162, 58, 0.05);
-}
-
-.row-idx {
-  font-size: 0.7rem;
-  color: var(--amber);
-  opacity: 0.75;
-}
-
-.row-body h3 {
-  font-size: 0.82rem;
+.domain-no {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.75rem;
+  font-size: 3.1rem;
   font-weight: 700;
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(255, 162, 58, 0.28);
+  pointer-events: none;
+  user-select: none;
+}
+
+.domain-name {
+  position: relative;
+  /* Reserve two lines whatever the title length, so the meter and the fact grid
+     below it land on the same baseline in all four tiles. */
+  max-width: 15ch;
+  min-height: 2.6em;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.3;
   letter-spacing: 0.01em;
   color: var(--ink);
 }
 
-.row-body p {
-  margin-top: 0.24rem;
+.domain .meter {
+  width: 100%;
+  margin: 0.7rem 0 0.85rem;
+}
+
+.facts {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.facts > div {
+  display: grid;
+  grid-template-columns: 3.9rem 1fr;
+  gap: 0.55rem;
+  align-items: baseline;
+}
+
+.facts dt {
+  font-size: 9.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--amber);
+  opacity: 0.85;
+}
+
+.facts dd {
   font-size: 0.72rem;
-  line-height: 1.55;
+  line-height: 1.5;
   color: var(--mute);
 }
 
-.row-meter {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  color: var(--cyan);
+.facts > div:nth-child(2) dd {
+  color: var(--ink-dim);
 }
 
 .meter {
@@ -364,8 +427,7 @@
     gap: 0.85rem;
   }
 
-  .hud-grid,
-  .hud-col {
+  .hud-grid {
     gap: 0.85rem;
   }
 
@@ -378,13 +440,14 @@
     justify-content: center;
   }
 
-  .row {
-    grid-template-columns: 1.8rem 1fr;
+  .matrix {
+    grid-template-columns: 1fr;
   }
 
-  .row-meter {
-    grid-column: 2;
-    margin-top: 0.3rem;
+  /* Single column: nothing left to align against, so drop the reserved line. */
+  .domain-name {
+    max-width: none;
+    min-height: 0;
   }
 
   .hotkey-hint {

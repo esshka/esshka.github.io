@@ -30,8 +30,10 @@
     </div>
 
     <div class="hud-grid">
-      <section class="panel panel-hero reveal reveal-2">
+      <div class="col reveal reveal-2">
         <div class="panel-head">Operator <em>/ 01</em></div>
+
+        <section class="panel panel-hero">
 
         <h1 class="callsign">Evgenii<br>Shevchenko</h1>
 
@@ -94,131 +96,111 @@
             </svg>
           </a>
         </nav>
-      </section>
-
-      <div class="hud-col">
-        <section class="panel reveal reveal-3">
-          <div class="panel-head">Core systems <em>/ 04 online</em></div>
-          <div class="rows">
-            <article class="row">
-              <span class="row-idx">01</span>
-              <div class="row-body">
-                <h3>Generative AI &amp; Machine Learning</h3>
-                <p>Agentic systems, MCPs, hybrid RAG, fine-tuning, reinforcement learning, neuroevolution</p>
-              </div>
-              <div class="row-meter"><span class="meter"><i style="--v:.96"></i></span>ACTIVE</div>
-            </article>
-            <article class="row">
-              <span class="row-idx">02</span>
-              <div class="row-body">
-                <h3>Algo Trading &amp; Real-Time Systems</h3>
-                <p>Market making, low-latency execution, streaming data, exchange integrations</p>
-              </div>
-              <div class="row-meter"><span class="meter"><i style="--v:.92"></i></span>ACTIVE</div>
-            </article>
-            <article class="row">
-              <span class="row-idx">03</span>
-              <div class="row-body">
-                <h3>Architecture &amp; Patterns</h3>
-                <p>EDA, CQRS, event sourcing, DDD, hexagonal and clean architecture</p>
-              </div>
-              <div class="row-meter"><span class="meter"><i style="--v:.98"></i></span>ACTIVE</div>
-            </article>
-            <article class="row">
-              <span class="row-idx">04</span>
-              <div class="row-body">
-                <h3>Modern UI &amp; Visualization</h3>
-                <p>React, Svelte, Next.js, state architecture, Canvas/WebGL, SSR</p>
-              </div>
-              <div class="row-meter"><span class="meter"><i style="--v:.88"></i></span>ACTIVE</div>
-            </article>
-          </div>
         </section>
+      </div>
 
-        <section class="panel reveal reveal-4">
-          <div class="panel-head">Service bus <em>/ open</em></div>
-          <div class="rows">
-            <article class="row">
-              <span class="row-idx">01</span>
-              <div class="row-body">
-                <h3>Technical Architecture Review</h3>
-                <p>Event-driven architecture, bounded contexts, resilience, scalability, and delivery risks.</p>
-              </div>
-            </article>
-            <article class="row">
-              <span class="row-idx">02</span>
-              <div class="row-body">
-                <h3>AI/ML Strategy</h3>
-                <p>Agentic systems, advanced RAG, computer vision, and production inference pipelines.</p>
-              </div>
-            </article>
-            <article class="row">
-              <span class="row-idx">03</span>
-              <div class="row-body">
-                <h3>Full-Stack Development</h3>
-                <p>Ruby on Rails, Python/FastAPI, TypeScript, React, Svelte, Java, and Clojure systems.</p>
-              </div>
-            </article>
-            <article class="row">
-              <span class="row-idx">04</span>
-              <div class="row-body">
-                <h3>Algorithmic Trading Platforms</h3>
-                <p>Execution engines, risk systems, market data distribution, and strategy research.</p>
-              </div>
-            </article>
-          </div>
-        </section>
+      <div class="col reveal reveal-3">
+        <div class="panel-head">Capability matrix <em>/ 04 domains</em></div>
 
-        <section class="panel reveal reveal-4">
-          <div class="panel-head">Flight log <em>/ selected</em></div>
-          <div class="rows">
-            <article class="row">
-              <span class="row-idx">01</span>
-              <div class="row-body">
-                <h3>Generative AI &amp; Agentic Systems</h3>
-                <p>Custom agentic pipelines and production RAG combining vector search with knowledge graphs.</p>
+        <div class="matrix">
+          <article class="domain">
+            <span class="domain-no" aria-hidden="true">01</span>
+            <h2 class="domain-name">Generative AI &amp; ML</h2>
+            <span class="meter"><i style="--v:.96"></i></span>
+            <dl class="facts">
+              <div>
+                <dt>Stack</dt>
+                <dd>Agentic systems, MCPs, hybrid RAG, fine-tuning, reinforcement learning, neuroevolution</dd>
               </div>
-              <div class="row-meter">AI</div>
-            </article>
-            <article class="row">
-              <span class="row-idx">02</span>
-              <div class="row-body">
-                <h3>High-Frequency Trading</h3>
-                <p>Market-making and event-sourced trading infrastructure in Java, Clojure, and Python.</p>
+              <div>
+                <dt>Shipped</dt>
+                <dd>Agentic pipelines for multi-step market analysis; production RAG over vector search plus knowledge
+                  graphs</dd>
               </div>
-              <div class="row-meter">HFT</div>
-            </article>
-            <article class="row">
-              <span class="row-idx">03</span>
-              <div class="row-body">
-                <h3>Real-Time Metaverse Platform</h3>
-                <p>Core architecture for a 500k+ LOC real-time PWA with heavy backend logic.</p>
+              <div>
+                <dt>Offer</dt>
+                <dd>AI/ML strategy, production inference pipelines</dd>
               </div>
-              <div class="row-meter">RT</div>
-            </article>
-            <article class="row">
-              <span class="row-idx">04</span>
-              <div class="row-body">
-                <h3>WebRTC Communication Platform</h3>
-                <p>Signaling, TURN/STUN, presence, and Blue/Green deployment pipelines.</p>
+            </dl>
+          </article>
+
+          <article class="domain">
+            <span class="domain-no" aria-hidden="true">02</span>
+            <h2 class="domain-name">Algo Trading &amp; Real-Time</h2>
+            <span class="meter"><i style="--v:.92"></i></span>
+            <dl class="facts">
+              <div>
+                <dt>Stack</dt>
+                <dd>Market making, low-latency execution, streaming data, exchange integrations</dd>
               </div>
-              <div class="row-meter">RTC</div>
-            </article>
-          </div>
-        </section>
+              <div>
+                <dt>Shipped</dt>
+                <dd>Avellaneda-Stoikov market making in Java, Clojure and Python; event-sourced order intake with p99
+                  hot paths</dd>
+              </div>
+              <div>
+                <dt>Offer</dt>
+                <dd>Execution engines, risk systems, market data distribution</dd>
+              </div>
+            </dl>
+          </article>
+
+          <article class="domain">
+            <span class="domain-no" aria-hidden="true">03</span>
+            <h2 class="domain-name">Architecture &amp; Event Systems</h2>
+            <span class="meter"><i style="--v:.98"></i></span>
+            <dl class="facts">
+              <div>
+                <dt>Stack</dt>
+                <dd>EDA, CQRS, event sourcing, DDD, hexagonal and clean architecture</dd>
+              </div>
+              <div>
+                <dt>Shipped</dt>
+                <dd>Core architecture for a 500k+ LOC real-time platform; Kafka and WebSocket fan-out; monolith split
+                  into bounded contexts</dd>
+              </div>
+              <div>
+                <dt>Offer</dt>
+                <dd>Technical architecture review, system design</dd>
+              </div>
+            </dl>
+          </article>
+
+          <article class="domain">
+            <span class="domain-no" aria-hidden="true">04</span>
+            <h2 class="domain-name">Interfaces &amp; Visualization</h2>
+            <span class="meter"><i style="--v:.88"></i></span>
+            <dl class="facts">
+              <div>
+                <dt>Stack</dt>
+                <dd>React, Svelte, Next.js, state architecture, Canvas/WebGL, SSR</dd>
+              </div>
+              <div>
+                <dt>Shipped</dt>
+                <dd>Mapbox GL and Canvas geo-visualization for millions of assets; WebRTC platform; React/MobX rework
+                  for high-frequency updates</dd>
+              </div>
+              <div>
+                <dt>Offer</dt>
+                <dd>Full-stack development, real-time client work</dd>
+              </div>
+            </dl>
+          </article>
+        </div>
       </div>
     </div>
 
-    <section class="panel reveal reveal-5">
+    <div class="col reveal reveal-5">
       <div class="panel-head">Loadout <em>/ 27 modules</em></div>
-      <div class="loadout">
+
+      <section class="panel loadout">
         <span>Ruby</span><span>Python</span><span>Java</span><span>Clojure</span><span>TypeScript</span><span>JavaScript</span><span>C#</span>
         <span>Rails</span><span>FastAPI</span><span>React</span><span>Svelte</span><span>Next.js</span>
         <span>LangChain</span><span>LlamaIndex</span><span>PyTorch</span><span>TensorFlow</span>
         <span>PostgreSQL</span><span>Kafka</span><span>Redis</span><span>Elasticsearch</span><span>ClickHouse</span>
         <span>Docker</span><span>GitHub Actions</span><span>Prometheus</span><span>Grafana</span><span>WebSockets</span><span>gRPC</span>
-      </div>
-    </section>
+      </section>
+    </div>
   </main>
 
   <div class="mobile-sticky-cta">
