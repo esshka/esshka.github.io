@@ -168,7 +168,7 @@
   setInterval(tickClock, 1000);
   setInterval(pollStats, 500);
 
-  /* ---- Capability tiles drive the trench palette ---- */
+  /* ---- Capability tiles recolour the accretion disk ---- */
 
   function hexToRgb(hex) {
     const raw = hex.trim().replace('#', '');
@@ -189,13 +189,13 @@
           hexToRgb(style.getPropertyValue('--accent-2')),
         ];
       }
-      if (window.setLaneAccent && pair[0] && pair[1]) {
-        window.setLaneAccent(pair[0], pair[1]);
+      if (window.setSceneAccent && pair[0] && pair[1]) {
+        window.setSceneAccent(pair[0], pair[1]);
       }
     };
 
     const leave = () => {
-      if (window.setLaneAccent) window.setLaneAccent(null);
+      if (window.setSceneAccent) window.setSceneAccent(null);
     };
 
     tile.addEventListener('mouseenter', enter);

@@ -1,11 +1,169 @@
 /*
   /Users/esshka/hireme/webgl.js
-  Neon trench-run WebGL scene with adaptive quality tiers
-  RELEVANT FILES: index.html, styles.css
+  Lensed black hole background: quality tiers, camera, page API, frame loop.
+  Physics lives in blackhole.wasm (Rust source kept outside git). Rebuild:
+    cd blackhole && cargo build --release --target wasm32-unknown-unknown \
+      && cp target/wasm32-unknown-unknown/release/blackhole.wasm ..
+  RELEVANT FILES: shaders.js, bloom.js, gl-util.js, lens-worker.js, ui.js, styles.css
 */
 
-(() => {
-  const canvas = document.getElementById('canyon');
+import { createBloom } from './bloom.js';
+import { createProgram, makeTexture, uniformLocations } from './gl-util.js';
+import { FULLSCREEN_VS, sceneFS } from './shaders.js';
+
+const QUALITY_ORDER = ['low', 'medium', 'high'];
+// The shader is fragment-bound, so backing-store scale is the main lever;
+// particles are the wasm-side cost.
+const QUALITY_PROFILES = {
+  high: { resScale: 1.0, particles: 60000, nebula: 1, bloomLevels: 6 },
+  medium: { resScale: 0.75, particles: 36000, nebula: 1, bloomLevels: 5 },
+  low: { resScale: 0.55, particles: 18000, nebula: 0, bloomLevels: 4 },
+};
+const PARTICLE_SEED = 1337;
+
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MOTION_SCALE = REDUCED_MOTION ? 0.4 : 1.0;
+
+const FOV_HALF = (19 * Math.PI) / 180;
+const INCLINATION = (84 * Math.PI) / 180; // from the disk's pole: nearly edge-on
+const MOUSE_TILT = 0.07;
+const MOUSE_ORBIT = 0.25;
+const BASE_ROLL = -0.12;
+const FADE_IN_SECONDS = 1.6;
+// Screen position of the hole as a fraction of width/height (GL y is up).
+const CENTER_LANDSCAPE = [0.66, 0.52]; // right of the text column
+const CENTER_PORTRAIT = [0.5, 0.3]; // behind the lower half of the hero
+
+const TEX_UNIT = { lut: 0, deflect: 1, heat: 2 };
+
+const ACCENT_DEFAULT_WARM = [1.0, 0.42, 0.1];
+const ACCENT_DEFAULT_HOT = [1.0, 0.86, 0.62];
+
+const SCENE_UNIFORMS = [
+  'uLut', 'uDeflect', 'uHeat', 'uCenter', 'uFocal', 'uRoll', 'uCamPos', 'uFwd', 'uRight', 'uUp',
+  'uAlphaMax', 'uAlphaCrit', 'uPhiMax', 'uRIn', 'uROut', 'uWarm', 'uHot', 'uNebula', 'uFade',
+];
+
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const normalize = (v) => {
+  const len = Math.hypot(v[0], v[1], v[2]);
+  return [v[0] / len, v[1] / len, v[2] / len];
+};
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+
+function pickInitialQuality() {
+  const maxDim = Math.max(window.innerWidth, window.innerHeight);
+  const dpr = window.devicePixelRatio || 1;
+  const coarsePointer = window.matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints || 0) > 0;
+
+  if (maxDim < 900 || dpr > 2 || coarsePointer) return 'low';
+  if (dpr >= 1.5) return 'medium';
+  return 'high';
+}
+
+function buildLensInWorker(module) {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker('lens-worker.js');
+    worker.onmessage = ({ data }) => {
+      worker.terminate();
+      if (data.error) reject(new Error(data.error));
+      else resolve(data);
+    };
+    worker.onerror = (event) => {
+      worker.terminate();
+      reject(new Error(event.message));
+    };
+    worker.postMessage(module);
+  });
+}
+
+// The disk runs here every frame; the lens table is built by the worker in parallel.
+async function loadPhysics() {
+  const response = await fetch('blackhole.wasm');
+  if (!response.ok) throw new Error(`blackhole.wasm: HTTP ${response.status}`);
+  const module = await WebAssembly.compile(await response.arrayBuffer());
+  const lensReady = buildLensInWorker(module);
+
+  const { exports: x } = await WebAssembly.instantiate(module);
+  x.bh_disk_init(QUALITY_PROFILES.high.particles, PARTICLE_SEED);
+  const heatW = x.bh_heat_w();
+  const heatH = x.bh_heat_h();
+  const { lut, deflection } = await lensReady;
+
+  return {
+    step: x.bh_disk_step,
+    lut,
+    deflection,
+    heat: new Uint8Array(x.memory.buffer, x.bh_heat_ptr(), heatW * heatH),
+    cols: x.bh_lut_cols(),
+    rows: x.bh_lut_rows(),
+    heatW,
+    heatH,
+    camDist: x.bh_cam_dist(),
+    alphaMax: x.bh_alpha_max(),
+    alphaCrit: x.bh_alpha_crit(),
+    phiMax: x.bh_phi_max(),
+    rIn: x.bh_r_in(),
+    rOut: x.bh_r_out(),
+  };
+}
+
+function createScene(gl, p, directOutput) {
+  const program = createProgram(gl, FULLSCREEN_VS, sceneFS(directOutput));
+  if (!program) return null;
+
+  gl.useProgram(program);
+  const u = uniformLocations(gl, program, SCENE_UNIFORMS);
+
+  // R16F is filterable in core WebGL2; R32F would need an extension. The
+  // deflection is stored relative to a straight line so half precision holds.
+  gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+  makeTexture(gl, {
+    unit: TEX_UNIT.lut, internalFormat: gl.R16F, width: p.cols, height: p.rows,
+    format: gl.RED, type: gl.FLOAT, data: p.lut,
+  });
+  makeTexture(gl, {
+    unit: TEX_UNIT.deflect, internalFormat: gl.R16F, width: p.rows, height: 1,
+    format: gl.RED, type: gl.FLOAT, data: p.deflection,
+  });
+  const heatTex = makeTexture(gl, {
+    unit: TEX_UNIT.heat, internalFormat: gl.R8, width: p.heatW, height: p.heatH,
+    format: gl.RED, type: gl.UNSIGNED_BYTE, data: p.heat, wrapS: gl.REPEAT,
+  });
+
+  gl.uniform1i(u.uLut, TEX_UNIT.lut);
+  gl.uniform1i(u.uDeflect, TEX_UNIT.deflect);
+  gl.uniform1i(u.uHeat, TEX_UNIT.heat);
+  gl.uniform1f(u.uAlphaMax, p.alphaMax);
+  gl.uniform1f(u.uAlphaCrit, p.alphaCrit);
+  gl.uniform1f(u.uPhiMax, p.phiMax);
+  gl.uniform1f(u.uRIn, p.rIn);
+  gl.uniform1f(u.uROut, p.rOut);
+
+  function draw(view) {
+    gl.useProgram(program);
+    gl.activeTexture(gl.TEXTURE0 + TEX_UNIT.heat);
+    gl.bindTexture(gl.TEXTURE_2D, heatTex);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, p.heatW, p.heatH, gl.RED, gl.UNSIGNED_BYTE, p.heat);
+    gl.uniform2fv(u.uCenter, view.center);
+    gl.uniform1f(u.uFocal, view.focal);
+    gl.uniform1f(u.uRoll, view.roll);
+    gl.uniform3fv(u.uCamPos, view.camPos);
+    gl.uniform3fv(u.uFwd, view.fwd);
+    gl.uniform3fv(u.uRight, view.right);
+    gl.uniform3fv(u.uUp, view.up);
+    gl.uniform3fv(u.uWarm, view.warm);
+    gl.uniform3fv(u.uHot, view.hot);
+    gl.uniform1f(u.uNebula, view.nebula);
+    gl.uniform1f(u.uFade, view.fade);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  return { draw };
+}
+
+function main() {
+  const canvas = document.getElementById('scene');
   const noop = () => {};
 
   if (!canvas) {
@@ -14,47 +172,13 @@
     return;
   }
 
-  const QUALITY_ORDER = ['low', 'medium', 'high'];
-  // resScale: fraction of device pixels actually rendered. This scene is fragment-bound
-  // (fullscreen procedural noise), so shrinking the backing store is the cheapest lever.
-  // triplanar: three noise projections vs one — roughly a 3x fragment cost difference.
-  const QUALITY_PROFILES = {
-    high: {
-      segments: 72,
-      stars: 220,
-      fbmOctaves: 4,
-      laneGlow: true,
-      heatDistortion: true,
-      lanePulseSpeed: 1.0,
-      resScale: 1.0,
-      triplanar: true,
-    },
-    medium: {
-      segments: 52,
-      stars: 120,
-      fbmOctaves: 3,
-      laneGlow: true,
-      heatDistortion: false,
-      lanePulseSpeed: 0.9,
-      resScale: 0.85,
-      triplanar: false,
-    },
-    low: {
-      segments: 32,
-      stars: 60,
-      fbmOctaves: 2,
-      laneGlow: false,
-      heatDistortion: false,
-      lanePulseSpeed: 0.8,
-      resScale: 0.7,
-      triplanar: false,
-    },
-  };
-
-  const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const MOTION_SCALE = REDUCED_MOTION ? 0.6 : 1.0;
+  const accent = { warm: ACCENT_DEFAULT_WARM.slice(), hot: ACCENT_DEFAULT_HOT.slice() };
+  const accentTarget = { warm: ACCENT_DEFAULT_WARM.slice(), hot: ACCENT_DEFAULT_HOT.slice() };
 
   let gl = null;
+  let scene = null;
+  let bloom = null;
+  let physics = null;
   let animationId = null;
   let isPaused = false;
   let contextLost = false;
@@ -76,87 +200,6 @@
   let prevTimeMs = performance.now();
   let time = 0;
 
-  let shipPos = { x: 0, y: 0.52, z: -5.5 };
-  let shipVel = { x: 0, y: 0 };
-  let shipRot = { x: 0, y: 0, z: 0 };
-  let targetRot = { x: 0, y: 0, z: 0 };
-  let camOffset = { x: 0, y: 0.42 };
-  let camVel = { x: 0, y: 0 };
-  let camTilt = { x: 0, y: 0 };
-
-  const TRENCH_FLOOR_Y = 0.0;
-  const FLOOR_BREATHE_AMPLITUDE = 0.06;
-  const SHIP_HALF_HEIGHT = 0.16;
-  const SHIP_CLEARANCE = 0.22;
-  const SHIP_MIN_Y_BASE = TRENCH_FLOOR_Y + FLOOR_BREATHE_AMPLITUDE + SHIP_HALF_HEIGHT + SHIP_CLEARANCE;
-  const SHIP_MAX_Y = 2.95;
-  const CAMERA_MIN_Y = TRENCH_FLOOR_Y + 0.42;
-  const CAMERA_MAX_Y = 0.95;
-
-  let starfieldModule = null;
-  let canyonModule = null;
-  let shipModule = null;
-  const drawState = {
-    time: 0,
-    dt: 0,
-    camOffset: null,
-    camTilt: null,
-    motionScale: MOTION_SCALE,
-    profile: null,
-    qualityKey: 'high',
-    shipPos: null,
-    shipRot: null,
-    lanePulse: 0,
-    shipThrust: 0,
-    lane: null,
-  };
-
-  // Lane emissive colours, driven from the page when a capability tile is focused.
-  // Only colour and intensity are animated: the pulse and scroll terms are phase
-  // functions of uTime, so retuning their rate mid-flight would teleport them.
-  const LANE_DEFAULT_A = [1.0, 0.52, 0.18];
-  const LANE_DEFAULT_B = [0.0, 0.84, 0.68];
-  const lane = { a: LANE_DEFAULT_A.slice(), b: LANE_DEFAULT_B.slice(), boost: 1 };
-  const laneTarget = { a: LANE_DEFAULT_A.slice(), b: LANE_DEFAULT_B.slice(), boost: 1 };
-
-  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-  const withDeadzone = (value, zone) => {
-    const abs = Math.abs(value);
-    if (abs < zone) return 0;
-    return Math.sign(value) * ((abs - zone) / (1 - zone));
-  };
-  const shapeInput = (value, power) => Math.sign(value) * Math.pow(Math.abs(value), power);
-
-  function pickInitialQuality() {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    const dpr = window.devicePixelRatio || 1;
-    const maxDim = Math.max(width, height);
-    const coarsePointer = window.matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints || 0) > 0;
-
-    if (maxDim < 900 || dpr > 2 || coarsePointer) {
-      return 'low';
-    }
-
-    if (!coarsePointer && dpr >= 1.5) {
-      return 'medium';
-    }
-
-    return 'high';
-  }
-
-  function getNextLowerTier(currentTier) {
-    const index = QUALITY_ORDER.indexOf(currentTier);
-    if (index <= 0) return currentTier;
-    return QUALITY_ORDER[index - 1];
-  }
-
-  function getNextUpperTier(currentTier) {
-    const index = QUALITY_ORDER.indexOf(currentTier);
-    if (index < 0 || index >= QUALITY_ORDER.length - 1) return currentTier;
-    return QUALITY_ORDER[index + 1];
-  }
-
   function applyQualityMeta(tier) {
     document.body.dataset.webglQuality = tier;
   }
@@ -173,27 +216,16 @@
     }
   }
 
-  function acquireContext() {
-    // MSAA is a fullscreen resolve every frame; only the top tier pays for it.
-    const opts = { antialias: qualityKey === 'high', alpha: false, stencil: false };
-    return canvas.getContext('webgl', opts) || canvas.getContext('experimental-webgl', opts);
+  function resize() {
+    if (!gl || contextLost) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2) * quality.resScale;
+    canvas.width = Math.max(1, Math.floor(window.innerWidth * dpr));
+    canvas.height = Math.max(1, Math.floor(window.innerHeight * dpr));
+    canvas.style.width = `${window.innerWidth}px`;
+    canvas.style.height = `${window.innerHeight}px`;
   }
 
   let resizePending = false;
-
-  function resize() {
-    if (!gl || contextLost) return;
-
-    const cssWidth = window.innerWidth;
-    const cssHeight = window.innerHeight;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2) * quality.resScale;
-
-    canvas.width = Math.max(1, Math.floor(cssWidth * dpr));
-    canvas.height = Math.max(1, Math.floor(cssHeight * dpr));
-    canvas.style.width = `${cssWidth}px`;
-    canvas.style.height = `${cssHeight}px`;
-    gl.viewport(0, 0, canvas.width, canvas.height);
-  }
 
   // Reallocating the backing store is expensive; coalesce resize bursts into one per frame.
   function requestResize() {
@@ -205,943 +237,29 @@
     });
   }
 
-  function compileShader(src, type) {
-    const shader = gl.createShader(type);
-    if (!shader) return null;
-
-    gl.shaderSource(shader, src);
-    gl.compileShader(shader);
-
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      console.error('Shader error:', gl.getShaderInfoLog(shader));
-      gl.deleteShader(shader);
-      return null;
-    }
-
-    return shader;
-  }
-
-  function createProgram(vsSource, fsSource) {
-    const vs = compileShader(vsSource, gl.VERTEX_SHADER);
-    const fs = compileShader(fsSource, gl.FRAGMENT_SHADER);
-    if (!vs || !fs) return null;
-
-    const program = gl.createProgram();
-    if (!program) return null;
-
-    gl.attachShader(program, vs);
-    gl.attachShader(program, fs);
-    gl.linkProgram(program);
-
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-      console.error('Program link error:', gl.getProgramInfoLog(program));
-      gl.deleteProgram(program);
-      return null;
-    }
-
-    return program;
-  }
-
-  function createRandom(seedStart = 1) {
-    let seed = seedStart >>> 0;
-    return () => {
-      seed = (1664525 * seed + 1013904223) >>> 0;
-      return seed / 4294967296;
-    };
-  }
-
-  function StarfieldModule() {
-    const vs = `
-precision mediump float;
-attribute vec3 aPos;
-attribute float aLayer;
-uniform float uTime;
-uniform vec2 uCamOffset;
-uniform vec2 uCamTilt;
-uniform float uReduce;
-uniform float uTwinkle;
-varying float vLayer;
-varying float vTwinkle;
-
-void main() {
-  vec3 pos = aPos;
-  float speed = mix(0.25, 1.0, aLayer);
-  pos.z = pos.z + uTime * (1.0 + speed * 1.8);
-  pos.z = mod(pos.z + 90.0, 180.0) - 90.0;
-
-  pos.x -= uCamOffset.x * (0.42 + speed * 0.28);
-  pos.y -= uCamOffset.y * (0.28 + speed * 0.16) * uReduce;
-  pos.x += pos.y * uCamTilt.x * 0.015;
-
-  vec3 cam = pos;
-  cam.z -= 10.0;
-  float depth = -cam.z;
-  float scale = 1.65 / max(depth, 0.1);
-
-  gl_Position = vec4(cam.x * scale, cam.y * scale * 1.38, depth * 0.01, 1.0);
-  gl_PointSize = mix(1.1, 2.8, aLayer) * scale * 55.0;
-
-  vLayer = aLayer;
-  vTwinkle = uTwinkle > 0.5 ? (sin(uTime * (2.4 + aLayer * 4.0) + aPos.x * 7.0 + aPos.y * 5.0) * 0.5 + 0.5) : 0.6;
-}
-`;
-
-    const fs = `
-precision mediump float;
-varying float vLayer;
-varying float vTwinkle;
-
-void main() {
-  vec2 p = gl_PointCoord - vec2(0.5);
-  float radius = dot(p, p);
-  if (radius > 0.25) discard;
-
-  float halo = smoothstep(0.25, 0.0, radius);
-  vec3 nearCol = vec3(0.95, 0.84, 0.65);
-  vec3 farCol = vec3(0.55, 0.78, 1.0);
-  vec3 col = mix(farCol, nearCol, vLayer);
-  float alpha = halo * (0.35 + 0.65 * vTwinkle);
-  gl_FragColor = vec4(col * (0.6 + 0.8 * vTwinkle), alpha);
-}
-`;
-
-    let program = null;
-    let buffer = null;
-    let count = 0;
-
-    const attribs = { pos: -1, layer: -1 };
-    const uniforms = {
-      time: null,
-      camOffset: null,
-      camTilt: null,
-      reduce: null,
-      twinkle: null,
-    };
-
-    function buildGeometry(starCount) {
-      const rand = createRandom(1337 + starCount);
-      const verts = [];
-      const layers = 3;
-
-      for (let i = 0; i < starCount; i += 1) {
-        const layerIdx = i % layers;
-        const layer = layerIdx / (layers - 1);
-        const spread = 40 - layer * 10;
-        const x = (rand() * 2 - 1) * spread;
-        const y = (rand() * 2 - 1) * (20 - layer * 6);
-        const z = rand() * 180 - 90;
-
-        verts.push(x, y, z, layer);
-      }
-
-      const data = new Float32Array(verts);
-      if (!buffer) {
-        buffer = gl.createBuffer();
-      }
-      if (!buffer) return false;
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-      count = data.length / 4;
-      return true;
-    }
-
-    function init(profile) {
-      program = createProgram(vs, fs);
-      if (!program) return false;
-
-      attribs.pos = gl.getAttribLocation(program, 'aPos');
-      attribs.layer = gl.getAttribLocation(program, 'aLayer');
-
-      uniforms.time = gl.getUniformLocation(program, 'uTime');
-      uniforms.camOffset = gl.getUniformLocation(program, 'uCamOffset');
-      uniforms.camTilt = gl.getUniformLocation(program, 'uCamTilt');
-      uniforms.reduce = gl.getUniformLocation(program, 'uReduce');
-      uniforms.twinkle = gl.getUniformLocation(program, 'uTwinkle');
-
-      return buildGeometry(profile.stars);
-    }
-
-    function rebuild(profile) {
-      return buildGeometry(profile.stars);
-    }
-
-    function update() {
-      return;
-    }
-
-    function draw(state) {
-      if (!program || !buffer || count === 0) return;
-
-      gl.useProgram(program);
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-
-      const stride = 4 * 4;
-      gl.enableVertexAttribArray(attribs.pos);
-      gl.vertexAttribPointer(attribs.pos, 3, gl.FLOAT, false, stride, 0);
-
-      gl.enableVertexAttribArray(attribs.layer);
-      gl.vertexAttribPointer(attribs.layer, 1, gl.FLOAT, false, stride, 3 * 4);
-
-      gl.uniform1f(uniforms.time, state.time);
-      gl.uniform2f(uniforms.camOffset, state.camOffset.x, state.camOffset.y);
-      gl.uniform2f(uniforms.camTilt, state.camTilt.x, state.camTilt.y);
-      gl.uniform1f(uniforms.reduce, state.motionScale);
-      gl.uniform1f(uniforms.twinkle, state.qualityKey === 'low' ? 0.0 : 1.0);
-
-      // Stars are sky: no depth test, no depth writes. Also fixes the old depth-scale
-      // mismatch (stars z*0.01 vs canyon z*0.022) that let far stars occlude near walls.
-      gl.disable(gl.DEPTH_TEST);
-      gl.depthMask(false);
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-      gl.drawArrays(gl.POINTS, 0, count);
-      gl.disable(gl.BLEND);
-      gl.depthMask(true);
-      gl.enable(gl.DEPTH_TEST);
-    }
-
-    return { init, rebuild, update, draw };
-  }
-
-  function CanyonModule() {
-    const vs = `
-precision mediump float;
-attribute vec3 aPos;
-attribute float aEmissive;
-uniform float uTime;
-uniform vec2 uCamOffset;
-uniform vec2 uCamTilt;
-uniform float uMotionScale;
-varying vec3 vPos;
-varying float vDepth;
-varying float vEmissive;
-varying float vTravel;
-
-void main() {
-  vec3 pos = aPos;
-  // +uTime, not -: the world approaches the camera. Forward flight down the
-  // trench, so the ship ahead of us shows its engines.
-  pos.z = pos.z + uTime * 3.4;
-  pos.z = mod(pos.z + 42.0, 84.0) - 42.0;
-
-  float breathe = sin(uTime * 1.2 + aPos.z * 0.2) * 0.05;
-  pos.y += breathe * uMotionScale;
-
-  vec3 cam = pos;
-  cam.x -= uCamOffset.x;
-  cam.y -= uCamOffset.y * uMotionScale;
-  cam.x += (pos.y - 0.8) * uCamTilt.x * 0.028;
-  cam.y += pos.x * uCamTilt.y * 0.01;
-  cam.y -= sin(uTime * 0.4 + uCamOffset.x * 0.2) * 0.018 * uMotionScale;
-  cam.z -= 6.0;
-
-  float depth = -cam.z;
-  float scale = 1.5 / max(depth, 0.12);
-
-  gl_Position = vec4(cam.x * scale, cam.y * scale * 1.5, depth * 0.022, 1.0);
-
-  vPos = pos;
-  vDepth = clamp(depth / 36.0, 0.0, 1.0);
-  vEmissive = aEmissive;
-  vTravel = pos.z;
-}
-`;
-
-    const fs = `
-precision mediump float;
-varying vec3 vPos;
-varying float vDepth;
-varying float vEmissive;
-varying float vTravel;
-uniform float uTime;
-uniform float uLaneGlow;
-uniform float uHeat;
-uniform float uPulseSpeed;
-uniform float uOctaves;
-uniform float uTriplanar;
-uniform vec3 uLaneA;
-uniform vec3 uLaneB;
-uniform float uLaneBoost;
-
-// sin-free hash: noise() calls this 4x, up to 4 octaves x 3 projections per pixel.
-// At ~48 hashes/pixel the transcendental was the dominant fragment cost.
-float hash(vec2 p) {
-  vec2 q = fract(p * vec2(233.34, 851.73));
-  q += dot(q, q + 23.45);
-  return fract(q.x * q.y);
-}
-
-float noise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  f = f * f * (3.0 - 2.0 * f);
-
-  float a = hash(i);
-  float b = hash(i + vec2(1.0, 0.0));
-  float c = hash(i + vec2(0.0, 1.0));
-  float d = hash(i + vec2(1.0, 1.0));
-
-  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-}
-
-float layeredNoise(vec2 p, float octaves) {
-  float n = 0.0;
-  float a = 0.55;
-  vec2 q = p;
-
-  n += a * noise(q);
-  if (octaves > 1.5) {
-    q *= 2.03;
-    a *= 0.5;
-    n += a * noise(q);
-  }
-  if (octaves > 2.5) {
-    q *= 2.07;
-    a *= 0.5;
-    n += a * noise(q);
-  }
-  if (octaves > 3.5) {
-    q *= 2.11;
-    a *= 0.5;
-    n += a * noise(q);
-  }
-
-  return n;
-}
-
-void main() {
-  vec2 uvX = vPos.yz * vec2(0.8, 0.35);
-  vec2 uvY = vPos.xz * vec2(0.45, 0.38);
-  vec2 uvZ = vPos.xy * vec2(0.55, 0.9);
-
-  float heatWarp = uHeat > 0.5 ? sin(vPos.z * 0.22 + uTime * 3.1) * 0.035 : 0.0;
-  uvY.x += heatWarp;
-
-  // Uniform branch — no divergence within a draw. Below 'high' a single projection
-  // carries the texture; the two extra fetches aren't worth 3x the fragment cost.
-  float tex = layeredNoise(uvY, uOctaves);
-  if (uTriplanar > 0.5) {
-    tex = tex * 0.45 + layeredNoise(uvX, uOctaves) * 0.35 + layeredNoise(uvZ, uOctaves) * 0.20;
-  }
-
-  vec3 baseCol = vec3(0.035, 0.075, 0.18);
-  baseCol += vec3(0.025, 0.04, 0.08) * tex;
-  baseCol += vec3(0.0, 0.06, 0.08) * smoothstep(0.0, 1.6, vPos.y);
-
-  float haze = exp(-abs(vPos.y) * 1.9) * (1.0 - vDepth) * 0.45;
-  baseCol += vec3(0.03, 0.045, 0.07) * haze;
-
-  float lanePulse = 0.5 + 0.5 * sin(uTime * 3.2 * uPulseSpeed + vTravel * 0.45);
-  float checkpoint = smoothstep(0.85, 1.0, sin(uTime * 1.96 + vTravel * 0.16));
-
-  vec3 emissive = mix(uLaneA, uLaneB, lanePulse);
-  emissive *= (0.3 + lanePulse * 0.7 + checkpoint * 0.9) * uLaneBoost;
-
-  float laneFactor = vEmissive * (uLaneGlow > 0.5 ? 1.0 : 0.28);
-  vec3 col = baseCol + emissive * laneFactor;
-
-  float fog = smoothstep(0.25, 1.0, vDepth);
-  col = mix(col, vec3(0.01, 0.018, 0.04), fog);
-
-  // Grade in-shader. A CSS filter on the canvas costs a fullscreen composite pass
-  // every frame; saturate + lift here is ~6 ALU ops instead.
-  col = mix(vec3(dot(col, vec3(0.299, 0.587, 0.114))), col, 1.24) * 1.14;
-
-  gl_FragColor = vec4(col, 1.0);
-}
-`;
-
-    let program = null;
-    let buffer = null;
-    let count = 0;
-
-    const attribs = { pos: -1, emissive: -1 };
-    const uniforms = {
-      time: null,
-      camOffset: null,
-      camTilt: null,
-      motionScale: null,
-      laneGlow: null,
-      heat: null,
-      pulseSpeed: null,
-      octaves: null,
-      triplanar: null,
-      laneA: null,
-      laneB: null,
-      laneBoost: null,
-    };
-
-    function centerOffset(z) {
-      return Math.sin(z * 0.11) * 0.85 + Math.sin(z * 0.037 + 1.2) * 0.55;
-    }
-
-    function wallHeight(z, side) {
-      return 1.75 + Math.sin(z * 0.17 + side * 0.6) * 0.35 + Math.cos(z * 0.061 - side * 0.3) * 0.24;
-    }
-
-    function pushVertex(store, x, y, z, emissive) {
-      store.push(x, y, z, emissive);
-    }
-
-    function pushTriangle(store, a, b, c, emissive) {
-      pushVertex(store, a[0], a[1], a[2], emissive);
-      pushVertex(store, b[0], b[1], b[2], emissive);
-      pushVertex(store, c[0], c[1], c[2], emissive);
-    }
-
-    function buildGeometry(profile) {
-      const verts = [];
-      const segments = profile.segments;
-      const length = 84;
-      const trenchWidth = 3.35;
-      const laneInsetInner = 0.18;
-      const laneInsetOuter = 0.38;
-
-      for (let i = 0; i < segments; i += 1) {
-        const t0 = i / segments;
-        const t1 = (i + 1) / segments;
-
-        const z0 = t0 * length - length / 2;
-        const z1 = t1 * length - length / 2;
-
-        const c0 = centerOffset(z0);
-        const c1 = centerOffset(z1);
-
-        const leftX0 = c0 - trenchWidth;
-        const leftX1 = c1 - trenchWidth;
-        const rightX0 = c0 + trenchWidth;
-        const rightX1 = c1 + trenchWidth;
-
-        const hL0 = wallHeight(z0, -1);
-        const hL1 = wallHeight(z1, -1);
-        const hR0 = wallHeight(z0, 1);
-        const hR1 = wallHeight(z1, 1);
-
-        // Left wall
-        pushTriangle(verts, [leftX0, 0, z0], [leftX0, hL0, z0], [leftX1, hL1, z1], 0);
-        pushTriangle(verts, [leftX0, 0, z0], [leftX1, hL1, z1], [leftX1, 0, z1], 0);
-
-        // Right wall
-        pushTriangle(verts, [rightX0, 0, z0], [rightX1, hR1, z1], [rightX0, hR0, z0], 0);
-        pushTriangle(verts, [rightX0, 0, z0], [rightX1, 0, z1], [rightX1, hR1, z1], 0);
-
-        // Floor
-        pushTriangle(verts, [leftX0, 0, z0], [leftX1, 0, z1], [rightX0, 0, z0], 0);
-        pushTriangle(verts, [rightX0, 0, z0], [leftX1, 0, z1], [rightX1, 0, z1], 0);
-
-        // Left lane strip
-        const ll0a = leftX0 + laneInsetInner;
-        const ll0b = leftX0 + laneInsetOuter;
-        const ll1a = leftX1 + laneInsetInner;
-        const ll1b = leftX1 + laneInsetOuter;
-        pushTriangle(verts, [ll0a, 0.02, z0], [ll1a, 0.02, z1], [ll0b, 0.02, z0], 1);
-        pushTriangle(verts, [ll0b, 0.02, z0], [ll1a, 0.02, z1], [ll1b, 0.02, z1], 1);
-
-        // Right lane strip
-        const rl0a = rightX0 - laneInsetInner;
-        const rl0b = rightX0 - laneInsetOuter;
-        const rl1a = rightX1 - laneInsetInner;
-        const rl1b = rightX1 - laneInsetOuter;
-        pushTriangle(verts, [rl0b, 0.02, z0], [rl1a, 0.02, z1], [rl0a, 0.02, z0], 1);
-        pushTriangle(verts, [rl0b, 0.02, z0], [rl1b, 0.02, z1], [rl1a, 0.02, z1], 1);
-      }
-
-      const data = new Float32Array(verts);
-      if (!buffer) buffer = gl.createBuffer();
-      if (!buffer) return false;
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-      count = data.length / 4;
-      return true;
-    }
-
-    function init(profile) {
-      program = createProgram(vs, fs);
-      if (!program) return false;
-
-      attribs.pos = gl.getAttribLocation(program, 'aPos');
-      attribs.emissive = gl.getAttribLocation(program, 'aEmissive');
-
-      uniforms.time = gl.getUniformLocation(program, 'uTime');
-      uniforms.camOffset = gl.getUniformLocation(program, 'uCamOffset');
-      uniforms.camTilt = gl.getUniformLocation(program, 'uCamTilt');
-      uniforms.motionScale = gl.getUniformLocation(program, 'uMotionScale');
-      uniforms.laneGlow = gl.getUniformLocation(program, 'uLaneGlow');
-      uniforms.heat = gl.getUniformLocation(program, 'uHeat');
-      uniforms.pulseSpeed = gl.getUniformLocation(program, 'uPulseSpeed');
-      uniforms.octaves = gl.getUniformLocation(program, 'uOctaves');
-      uniforms.triplanar = gl.getUniformLocation(program, 'uTriplanar');
-      uniforms.laneA = gl.getUniformLocation(program, 'uLaneA');
-      uniforms.laneB = gl.getUniformLocation(program, 'uLaneB');
-      uniforms.laneBoost = gl.getUniformLocation(program, 'uLaneBoost');
-
-      return buildGeometry(profile);
-    }
-
-    function rebuild(profile) {
-      return buildGeometry(profile);
-    }
-
-    function update() {
-      return;
-    }
-
-    function draw(state) {
-      if (!program || !buffer || count === 0) return;
-
-      gl.useProgram(program);
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-
-      const stride = 4 * 4;
-      gl.enableVertexAttribArray(attribs.pos);
-      gl.vertexAttribPointer(attribs.pos, 3, gl.FLOAT, false, stride, 0);
-
-      gl.enableVertexAttribArray(attribs.emissive);
-      gl.vertexAttribPointer(attribs.emissive, 1, gl.FLOAT, false, stride, 3 * 4);
-
-      gl.uniform1f(uniforms.time, state.time);
-      gl.uniform2f(uniforms.camOffset, state.camOffset.x, state.camOffset.y);
-      gl.uniform2f(uniforms.camTilt, state.camTilt.x, state.camTilt.y);
-      gl.uniform1f(uniforms.motionScale, state.motionScale);
-      gl.uniform1f(uniforms.laneGlow, state.profile.laneGlow ? 1.0 : 0.0);
-      gl.uniform1f(uniforms.heat, state.profile.heatDistortion ? 1.0 : 0.0);
-      gl.uniform1f(uniforms.pulseSpeed, state.profile.lanePulseSpeed * state.motionScale);
-      gl.uniform1f(uniforms.octaves, state.profile.fbmOctaves);
-      gl.uniform1f(uniforms.triplanar, state.profile.triplanar ? 1.0 : 0.0);
-      gl.uniform3f(uniforms.laneA, state.lane.a[0], state.lane.a[1], state.lane.a[2]);
-      gl.uniform3f(uniforms.laneB, state.lane.b[0], state.lane.b[1], state.lane.b[2]);
-      gl.uniform1f(uniforms.laneBoost, state.lane.boost);
-
-      gl.drawArrays(gl.TRIANGLES, 0, count);
-    }
-
-    return { init, rebuild, update, draw };
-  }
-
-  function ShipModule() {
-const vs = `
-precision mediump float;
-attribute vec3 aPos;
-attribute vec3 aNorm;
-attribute float aEmit;
-attribute float aPlume;
-uniform vec3 uPos;
-uniform vec3 uRot;
-uniform vec2 uCamOffset;
-uniform vec2 uCamTilt;
-uniform float uTime;
-uniform float uMotionScale;
-varying vec3 vNorm;
-varying vec3 vWorldPos;
-varying float vEmit;
-varying float vPlume;
-uniform float uThrust;
-
-mat3 rotX(float t) {
-  float c = cos(t);
-  float s = sin(t);
-  return mat3(1.0, 0.0, 0.0, 0.0, c, -s, 0.0, s, c);
-}
-
-mat3 rotY(float t) {
-  float c = cos(t);
-  float s = sin(t);
-  return mat3(c, 0.0, s, 0.0, 1.0, 0.0, -s, 0.0, c);
-}
-
-mat3 rotZ(float t) {
-  float c = cos(t);
-  float s = sin(t);
-  return mat3(c, -s, 0.0, s, c, 0.0, 0.0, 0.0, 1.0);
-}
-
-void main() {
-  vec3 p = aPos;
-  vec3 n = aNorm;
-
-  mat3 r = rotZ(uRot.z) * rotY(uRot.y) * rotX(uRot.x);
-  // aPlume is 0 on the hull, 1..2 along an exhaust plume. Stretching happens in
-  // ship space, before the rotation, so the plume always trails the nozzles.
-  float plumeT = max(aPlume - 1.0, 0.0);
-  p.z += plumeT * 0.95 * uThrust;
-  p = r * p + uPos;
-  n = normalize(r * n);
-
-  vec3 cam = p;
-  cam.x -= uCamOffset.x;
-  cam.y -= uCamOffset.y * uMotionScale;
-  cam.x += (p.y - 0.4) * uCamTilt.x * 0.028;
-  cam.y += p.x * uCamTilt.y * 0.01;
-  cam.y -= sin(uTime * 0.4 + uCamOffset.x * 0.2) * 0.018 * uMotionScale;
-  cam.z -= 6.0;
-
-  float depth = -cam.z;
-  float scale = 1.5 / max(depth, 0.1);
-  gl_Position = vec4(cam.x * scale, cam.y * scale * 1.5, depth * 0.022, 1.0);
-
-  vNorm = n;
-  vWorldPos = p;
-  vEmit = aEmit;
-  vPlume = aPlume;
-}
-`;
-
-    const fs = `
-precision mediump float;
-varying vec3 vNorm;
-varying vec3 vWorldPos;
-varying float vEmit;
-varying float vPlume;
-uniform float uTime;
-uniform float uPulse;
-uniform float uThrust;
-
-void main() {
-  // Exhaust plume: additive, unlit, fading along its length. Flicker rides on
-  // uPulse (computed CPU-side) rather than uTime, which is mediump and loses
-  // resolution over a long session.
-  if (vPlume > 0.5) {
-    float t = clamp(vPlume - 1.0, 0.0, 1.0);
-    float fade = pow(1.0 - t, 1.5);
-    float across = pow(max(1.0 - abs(vEmit), 0.0), 1.4);
-    float flicker = 0.82 + 0.18 * uPulse;
-    vec3 hot = mix(vec3(0.92, 0.97, 1.0), vec3(0.12, 0.55, 1.0), t);
-    gl_FragColor = vec4(hot * (0.8 + uThrust * 0.9) * flicker, fade * across * (0.4 + uThrust * 0.55));
-    return;
-  }
-  vec3 viewDir = normalize(vec3(0.0, 0.0, 5.8) - vWorldPos);
-  vec3 normal = normalize(vNorm);
-  vec3 lightDir = normalize(vec3(0.7, 0.9, 0.55));
-
-  float diff = max(dot(normal, lightDir), 0.0);
-  float ambient = 0.18;
-
-  vec3 halfDir = normalize(lightDir + viewDir);
-  float spec = pow(max(dot(normal, halfDir), 0.0), 46.0);
-  float fresnel = pow(1.0 - max(dot(viewDir, normal), 0.0), 3.2);
-
-  float stripe = smoothstep(0.55, 0.9, abs(sin(vWorldPos.z * 20.0 + vWorldPos.x * 14.0)));
-  float pulse = 0.55 + 0.45 * sin(uTime * 3.2);
-
-  vec3 hull = vec3(0.22, 0.26, 0.33);
-  vec3 col = hull * (ambient + diff * 0.95);
-  col += vec3(0.9, 0.96, 1.0) * spec * 0.95;
-  col += vec3(0.34, 0.72, 1.0) * fresnel * 0.75;
-
-  vec3 lineCol = mix(vec3(1.0, 0.52, 0.2), vec3(0.0, 0.82, 0.68), pulse);
-  col += lineCol * stripe * 0.22 * uPulse;
-
-  float thruster = vEmit * (0.35 + uThrust * 1.25);
-  col += mix(vec3(1.0, 0.58, 0.2), vec3(0.0, 0.84, 1.0), 0.45) * thruster;
-
-  gl_FragColor = vec4(col, 1.0);
-}
-`;
-
-    let program = null;
-    let buffer = null;
-    let hullCount = 0;
-    let plumeCount = 0;
-
-    const attribs = { pos: -1, norm: -1, emit: -1, plume: -1 };
-    const uniforms = {
-      pos: null,
-      rot: null,
-      camOffset: null,
-      camTilt: null,
-      time: null,
-      motionScale: null,
-      pulse: null,
-      thrust: null,
-    };
-
-    const STRIDE = 8;
-
-    function pushVertex(out, pos, norm, emit, plume = 0) {
-      out.push(pos[0], pos[1], pos[2], norm[0], norm[1], norm[2], emit, plume);
-    }
-
-    function pushTri(out, p0, p1, p2, norm, emit) {
-      pushVertex(out, p0, norm, emit);
-      pushVertex(out, p1, norm, emit);
-      pushVertex(out, p2, norm, emit);
-    }
-
-    function addBox(out, x, y, z, w, h, d, emit = 0) {
-      const p = {
-        lbf: [x - w, y - h, z + d],
-        rbf: [x + w, y - h, z + d],
-        rtf: [x + w, y + h, z + d],
-        ltf: [x - w, y + h, z + d],
-        lbb: [x - w, y - h, z - d],
-        rbb: [x + w, y - h, z - d],
-        rtb: [x + w, y + h, z - d],
-        ltb: [x - w, y + h, z - d],
-      };
-
-      pushTri(out, p.lbf, p.rbf, p.rtf, [0, 0, 1], emit);
-      pushTri(out, p.lbf, p.rtf, p.ltf, [0, 0, 1], emit);
-
-      pushTri(out, p.lbb, p.ltb, p.rtb, [0, 0, -1], emit);
-      pushTri(out, p.lbb, p.rtb, p.rbb, [0, 0, -1], emit);
-
-      pushTri(out, p.ltf, p.rtf, p.rtb, [0, 1, 0], emit);
-      pushTri(out, p.ltf, p.rtb, p.ltb, [0, 1, 0], emit);
-
-      pushTri(out, p.lbb, p.rbb, p.rbf, [0, -1, 0], emit);
-      pushTri(out, p.lbb, p.rbf, p.lbf, [0, -1, 0], emit);
-
-      pushTri(out, p.rbf, p.rbb, p.rtb, [1, 0, 0], emit);
-      pushTri(out, p.rbf, p.rtb, p.rtf, [1, 0, 0], emit);
-
-      pushTri(out, p.lbb, p.lbf, p.ltf, [-1, 0, 0], emit);
-      pushTri(out, p.lbb, p.ltf, p.ltb, [-1, 0, 0], emit);
-    }
-
-    function addNose(out, zFront, zBack, width, height, emit = 0) {
-      const tip = [0, 0, zFront];
-      const lt = [-width, height, zBack];
-      const rt = [width, height, zBack];
-      const lb = [-width, -height, zBack];
-      const rb = [width, -height, zBack];
-
-      pushTri(out, tip, lt, rt, [0, 0.6, 1], emit);
-      pushTri(out, tip, rb, lb, [0, -0.6, 1], emit);
-      pushTri(out, tip, lb, lt, [-1, 0, 1], emit);
-      pushTri(out, tip, rt, rb, [1, 0, 1], emit);
-    }
-
-    // A plume is a cross of two tapered quads rather than a closed cone: additive
-    // blending on a closed volume just reads as a flat blob, and the cross keeps
-    // its shape from any angle the ship banks to. aPlume runs 1 at the nozzle to 2
-    // at the tip. aEmit is free on plume verts (the hull path never runs for them),
-    // so it carries -1..1 across the quad's width to soften the edges — without it
-    // the cross reads as two flat blades.
-    function pushPlumeQuad(out, base0, base1, tip1, tip0) {
-      const n = [0, 0, 1];
-      pushVertex(out, base0, n, -1, 1);
-      pushVertex(out, base1, n, 1, 1);
-      pushVertex(out, tip1, n, 1, 2);
-      pushVertex(out, base0, n, -1, 1);
-      pushVertex(out, tip1, n, 1, 2);
-      pushVertex(out, tip0, n, -1, 2);
-    }
-
-    function addPlume(out, x, y, z, r0, r1, len) {
-      const zt = z + len;
-      pushPlumeQuad(out, [x - r0, y, z], [x + r0, y, z], [x + r1, y, zt], [x - r1, y, zt]);
-      pushPlumeQuad(out, [x, y - r0, z], [x, y + r0, z], [x, y + r1, zt], [x, y - r1, zt]);
-    }
-
-    function buildGeometry() {
-      const verts = [];
-      const s = 0.1;
-
-      // Main body
-      addBox(verts, 0, 0, -0.02, s * 1.35, s * 0.95, s * 3.9, 0);
-      addBox(verts, 0, s * 0.55, s * 1.1, s * 0.85, s * 0.5, s * 1.45, 0);
-      addNose(verts, s * 5.7, s * 2.8, s * 0.85, s * 0.56, 0);
-
-      // Side nacelles
-      addBox(verts, s * 2.95, -s * 0.03, -s * 0.85, s * 1.15, s * 0.25, s * 2.55, 0);
-      addBox(verts, -s * 2.95, -s * 0.03, -s * 0.85, s * 1.15, s * 0.25, s * 2.55, 0);
-
-      // Rear thruster cluster
-      addBox(verts, s * 3.95, 0, -s * 2.75, s * 0.52, s * 0.5, s * 1.35, 0);
-      addBox(verts, -s * 3.95, 0, -s * 2.75, s * 0.52, s * 0.5, s * 1.35, 0);
-      addBox(verts, 0, -s * 0.05, -s * 3.05, s * 0.7, s * 0.45, s * 1.1, 0);
-
-      // Emissive thruster nozzles (rear faces)
-      addBox(verts, s * 3.95, 0, -s * 4.0, s * 0.35, s * 0.35, s * 0.22, 1);
-      addBox(verts, -s * 3.95, 0, -s * 4.0, s * 0.35, s * 0.35, s * 0.22, 1);
-      addBox(verts, 0, -s * 0.05, -s * 4.05, s * 0.45, s * 0.3, s * 0.2, 1);
-
-      // Compact vertical fins
-      addBox(verts, s * 3.95, s * 0.88, -s * 2.0, s * 0.11, s * 0.7, s * 0.62, 0);
-      addBox(verts, -s * 3.95, s * 0.88, -s * 2.0, s * 0.11, s * 0.7, s * 0.62, 0);
-
-      // The hull above is modelled nose-forward (+z). Mirror z on positions and
-      // normals to turn it around, so the camera chasing it sees the nozzles.
-      // Winding flips too, which is harmless: CULL_FACE is never enabled.
-      for (let i = 0; i < verts.length; i += STRIDE) {
-        verts[i + 2] = -verts[i + 2];
-        verts[i + 5] = -verts[i + 5];
-      }
-
-      hullCount = verts.length / STRIDE;
-
-      // Plumes live after the hull in the same buffer so they can be drawn as a
-      // second, additive pass without a second buffer or program.
-      const nozzleZ = s * 4.0;
-      addPlume(verts, s * 3.95, 0, nozzleZ, s * 0.95, s * 0.3, s * 14.0);
-      addPlume(verts, -s * 3.95, 0, nozzleZ, s * 0.95, s * 0.3, s * 14.0);
-      addPlume(verts, 0, -s * 0.05, s * 4.05, s * 1.1, s * 0.34, s * 17.0);
-
-      const data = new Float32Array(verts);
-      if (!buffer) buffer = gl.createBuffer();
-      if (!buffer) return false;
-
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-      plumeCount = data.length / STRIDE - hullCount;
-      return true;
-    }
-
-    function init() {
-      program = createProgram(vs, fs);
-      if (!program) return false;
-
-      attribs.pos = gl.getAttribLocation(program, 'aPos');
-      attribs.norm = gl.getAttribLocation(program, 'aNorm');
-      attribs.emit = gl.getAttribLocation(program, 'aEmit');
-      attribs.plume = gl.getAttribLocation(program, 'aPlume');
-
-      uniforms.pos = gl.getUniformLocation(program, 'uPos');
-      uniforms.rot = gl.getUniformLocation(program, 'uRot');
-      uniforms.camOffset = gl.getUniformLocation(program, 'uCamOffset');
-      uniforms.camTilt = gl.getUniformLocation(program, 'uCamTilt');
-      uniforms.time = gl.getUniformLocation(program, 'uTime');
-      uniforms.motionScale = gl.getUniformLocation(program, 'uMotionScale');
-      uniforms.pulse = gl.getUniformLocation(program, 'uPulse');
-      uniforms.thrust = gl.getUniformLocation(program, 'uThrust');
-
-      return buildGeometry();
-    }
-
-    function rebuild() {
-      return true;
-    }
-
-    function update() {
-      return;
-    }
-
-    function draw(state) {
-      if (!program || !buffer || hullCount === 0) return;
-
-      gl.useProgram(program);
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-
-      const stride = STRIDE * 4;
-      gl.enableVertexAttribArray(attribs.pos);
-      gl.vertexAttribPointer(attribs.pos, 3, gl.FLOAT, false, stride, 0);
-
-      gl.enableVertexAttribArray(attribs.norm);
-      gl.vertexAttribPointer(attribs.norm, 3, gl.FLOAT, false, stride, 3 * 4);
-
-      gl.enableVertexAttribArray(attribs.emit);
-      gl.vertexAttribPointer(attribs.emit, 1, gl.FLOAT, false, stride, 6 * 4);
-
-      gl.enableVertexAttribArray(attribs.plume);
-      gl.vertexAttribPointer(attribs.plume, 1, gl.FLOAT, false, stride, 7 * 4);
-
-      gl.uniform3f(uniforms.pos, state.shipPos.x, state.shipPos.y, state.shipPos.z);
-      gl.uniform3f(uniforms.rot, state.shipRot.x, state.shipRot.y, state.shipRot.z);
-      gl.uniform2f(uniforms.camOffset, state.camOffset.x, state.camOffset.y);
-      gl.uniform2f(uniforms.camTilt, state.camTilt.x, state.camTilt.y);
-      gl.uniform1f(uniforms.time, state.time);
-      gl.uniform1f(uniforms.motionScale, state.motionScale);
-      gl.uniform1f(uniforms.pulse, 0.7 + 0.3 * state.lanePulse);
-      gl.uniform1f(uniforms.thrust, state.shipThrust);
-
-      gl.drawArrays(gl.TRIANGLES, 0, hullCount);
-
-      if (plumeCount > 0) {
-        // Additive, and no depth writes: the plume must not occlude the hull it
-        // trails from, nor punch a hole in anything drawn behind it.
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-        gl.depthMask(false);
-        gl.drawArrays(gl.TRIANGLES, hullCount, plumeCount);
-        gl.depthMask(true);
-        gl.disable(gl.BLEND);
-      }
-    }
-
-    return { init, rebuild, update, draw };
-  }
-
   function initializeScene() {
-    gl = acquireContext();
+    gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false });
     if (!gl) {
-      console.error('WebGL not supported');
+      console.error('WebGL2 not supported');
       setFallback();
       return false;
     }
-
     resize();
     applyQualityMeta(qualityKey);
-
-    gl.enable(gl.DEPTH_TEST);
-    gl.clearColor(0.008, 0.012, 0.03, 1.0);
-
-    starfieldModule = StarfieldModule();
-    canyonModule = CanyonModule();
-    shipModule = ShipModule();
-
-    const starReady = starfieldModule.init(quality);
-    const canyonReady = canyonModule.init(quality);
-
-    if (!canyonReady) {
-      console.error('WebGL initialization failed: canyon pipeline unavailable');
+    bloom = createBloom(gl);
+    scene = createScene(gl, physics, !bloom);
+    if (!scene) {
+      console.error('WebGL initialization failed: black hole pipeline unavailable');
       setFallback();
       return false;
     }
-
-    if (!starReady) {
-      console.warn('Starfield disabled; continuing with canyon + ship');
-      starfieldModule = null;
-    }
-
-    const shipReady = shipModule.init(quality);
-    if (!shipReady) {
-      console.warn('Ship shader disabled; canyon background remains active');
-      shipModule = null;
-    }
-
     return true;
   }
 
   function tryApplyQuality(nextTier) {
     if (nextTier === qualityKey) return;
-
-    const prevTier = qualityKey;
-    const prevProfile = quality;
-
     qualityKey = nextTier;
     quality = QUALITY_PROFILES[nextTier];
-
-    let ok = true;
-    try {
-      if (starfieldModule) {
-        ok = starfieldModule.rebuild(quality) && ok;
-      }
-      if (canyonModule) {
-        ok = canyonModule.rebuild(quality) && ok;
-      }
-      if (shipModule) {
-        ok = shipModule.rebuild(quality) && ok;
-      }
-    } catch (error) {
-      console.error('Quality switch failed:', error);
-      ok = false;
-    }
-
-    if (!ok) {
-      qualityKey = prevTier;
-      quality = prevProfile;
-      try {
-        if (starfieldModule) starfieldModule.rebuild(quality);
-        if (canyonModule) canyonModule.rebuild(quality);
-        if (shipModule) shipModule.rebuild(quality);
-      } catch (_rollbackError) {
-        console.error('Quality rollback failed');
-      }
-      return;
-    }
-
     applyQualityMeta(qualityKey);
     resize();
   }
@@ -1164,162 +282,87 @@ void main() {
     if (perfElapsedMs < 1500) return;
     perfElapsedMs = 0;
 
+    const index = QUALITY_ORDER.indexOf(qualityKey);
     if (slowFrameStreak >= 90) {
-      const lower = getNextLowerTier(qualityKey);
-      tryApplyQuality(lower);
-      slowFrameStreak = 0;
-      fastFrameStreak = 0;
+      tryApplyQuality(QUALITY_ORDER[Math.max(index - 1, 0)]);
+    } else if (fastFrameStreak >= 180) {
+      tryApplyQuality(QUALITY_ORDER[Math.min(index + 1, QUALITY_ORDER.length - 1)]);
+    } else {
       return;
     }
-
-    if (fastFrameStreak >= 180) {
-      const upper = getNextUpperTier(qualityKey);
-      tryApplyQuality(upper);
-      slowFrameStreak = 0;
-      fastFrameStreak = 0;
-    }
+    slowFrameStreak = 0;
+    fastFrameStreak = 0;
   }
 
-  function updateState(dt) {
-    const dtNorm = clamp(dt * 60, 0.5, 2.2);
-
-    const mouseLerp = clamp(0.055 * dtNorm, 0.02, 0.14);
-    mouseX += (targetMouseX - mouseX) * mouseLerp;
-    mouseY += (targetMouseY - mouseY) * mouseLerp;
-
-    const aimX = withDeadzone(mouseX, 0.14);
-    const aimY = withDeadzone(mouseY, 0.16);
-    const aimCurveX = shapeInput(aimX, 1.45);
-    const aimCurveY = shapeInput(aimY, 1.4);
-
-    const railX = Math.sin(time * 0.24) * 0.2 + Math.sin(time * 0.08 + 1.2) * 0.12;
-    const railY = 0.14 + Math.cos(time * 0.2 + 0.8) * 0.04;
-
-    const desiredCamX = railX + aimCurveX * 0.55 + shipVel.x * 0.38;
-    const desiredCamY = clamp(railY + aimCurveY * 0.34 + shipVel.y * 0.25, CAMERA_MIN_Y, CAMERA_MAX_Y);
-
-    const camSpring = 0.026 * dtNorm * MOTION_SCALE;
-    const camDamp = Math.pow(0.9, dtNorm);
-
-    camVel.x += (desiredCamX - camOffset.x) * camSpring;
-    camVel.y += (desiredCamY - camOffset.y) * camSpring;
-    camVel.x *= camDamp;
-    camVel.y *= camDamp;
-
-    camOffset.x += camVel.x;
-    camOffset.y += camVel.y;
-    camOffset.x = clamp(camOffset.x, -1.5, 1.5);
-    camOffset.y = clamp(camOffset.y, CAMERA_MIN_Y, CAMERA_MAX_Y);
-    if (camOffset.y <= CAMERA_MIN_Y && camVel.y < 0) {
-      camVel.y = 0;
-    }
-
-    const camTiltTargetX = clamp(camVel.x * 0.24 + aimCurveX * 0.06, -0.22, 0.22);
-    const camTiltTargetY = clamp(camVel.y * 0.3 + Math.sin(time * 0.5) * 0.02 * MOTION_SCALE, -0.14, 0.14);
-    const camTiltLerp = clamp(0.07 * dtNorm, 0.04, 0.14);
-    camTilt.x += (camTiltTargetX - camTilt.x) * camTiltLerp;
-    camTilt.y += (camTiltTargetY - camTilt.y) * camTiltLerp;
-
-    const targetX = aimCurveX * 2.5 + railX * 0.2;
-    const dynamicFloorSafety = Math.abs(shipRot.x) * 0.08 + Math.abs(shipRot.z) * 0.1 + Math.abs(shipVel.y) * 0.02;
-    const minShipY = SHIP_MIN_Y_BASE + dynamicFloorSafety;
-    const targetY = clamp(aimCurveY * 1.25 + 1.0 + railY * 0.15, minShipY, SHIP_MAX_Y);
-
-    const accel = 0.0095 * dtNorm * MOTION_SCALE;
-    const drag = Math.pow(0.92, dtNorm);
-
-    const dx = targetX - shipPos.x;
-    const dy = targetY - shipPos.y;
-
-    shipVel.x += dx * accel;
-    shipVel.y += dy * accel;
-
-    shipVel.x *= drag;
-    shipVel.y *= drag;
-
-    shipPos.x += shipVel.x;
-    shipPos.y += shipVel.y;
-
-    if (shipPos.y < minShipY) {
-      shipPos.y = minShipY;
-      if (shipVel.y < 0) shipVel.y = 0;
-    } else if (shipPos.y > SHIP_MAX_Y) {
-      shipPos.y = SHIP_MAX_Y;
-      if (shipVel.y > 0) shipVel.y *= 0.25;
-    }
-
-    const maxRoll = 0.65;
-    const maxPitch = 0.6;
-
-    const bob = Math.sin(time * 0.7) * 0.018 * MOTION_SCALE;
-    const drift = Math.sin(time * 0.3 + camOffset.x * 0.2) * 0.025 * MOTION_SCALE;
-
-    targetRot.x = clamp(-shipVel.y * 0.9 + bob, -maxPitch, maxPitch);
-    targetRot.z = clamp(-shipVel.x * 0.95 + camTilt.x * 0.1, -maxRoll, maxRoll);
-    targetRot.y = clamp(-shipVel.x * 0.22 + drift, -0.24, 0.24);
-
-    const rotLerp = clamp(0.085 * dtNorm, 0.04, 0.18);
-    shipRot.x += (targetRot.x - shipRot.x) * rotLerp;
-    shipRot.y += (targetRot.y - shipRot.y) * rotLerp;
-    shipRot.z += (targetRot.z - shipRot.z) * rotLerp;
-
-    const laneLerp = clamp(0.08 * dtNorm, 0.03, 0.2);
+  function viewState(dt) {
+    const lerp = clamp(dt * 3.3, 0.02, 0.14);
+    mouseX += (targetMouseX - mouseX) * lerp;
+    mouseY += (targetMouseY - mouseY) * lerp;
     for (let i = 0; i < 3; i += 1) {
-      lane.a[i] += (laneTarget.a[i] - lane.a[i]) * laneLerp;
-      lane.b[i] += (laneTarget.b[i] - lane.b[i]) * laneLerp;
+      accent.warm[i] += (accentTarget.warm[i] - accent.warm[i]) * lerp;
+      accent.hot[i] += (accentTarget.hot[i] - accent.hot[i]) * lerp;
     }
-    lane.boost += (laneTarget.boost - lane.boost) * laneLerp;
 
-    if (starfieldModule) {
-      starfieldModule.update();
-    }
-    canyonModule.update();
-    if (shipModule) {
-      shipModule.update();
-    }
+    const inc = INCLINATION + (mouseY * MOUSE_TILT + Math.sin(time * 0.05) * 0.02) * MOTION_SCALE;
+    const az = mouseX * MOUSE_ORBIT * MOTION_SCALE;
+    const camPos = [
+      physics.camDist * Math.sin(inc) * Math.cos(az),
+      physics.camDist * Math.cos(inc),
+      physics.camDist * Math.sin(inc) * Math.sin(az),
+    ];
+    const fwd = normalize(camPos.map((c) => -c));
+    const right = normalize(cross(fwd, [0, 1, 0]));
+
+    const w = canvas.width;
+    const h = canvas.height;
+    const center = w > h ? CENTER_LANDSCAPE : CENTER_PORTRAIT;
+    return {
+      center: [w * center[0], h * center[1]],
+      focal: (0.5 * Math.min(h, w * 1.1)) / Math.tan(FOV_HALF),
+      roll: BASE_ROLL + mouseX * 0.03 * MOTION_SCALE,
+      camPos,
+      fwd,
+      right,
+      up: cross(right, fwd),
+      warm: accent.warm,
+      hot: accent.hot,
+      nebula: quality.nebula,
+      fade: clamp(time / FADE_IN_SECONDS, 0, 1),
+    };
   }
 
   function render(nowMs) {
-    if (isPaused || hasFallback || contextLost || !gl) {
+    if (isPaused || hasFallback || contextLost || !scene) {
       animationId = null;
       return;
     }
 
     const dtMs = clamp(nowMs - prevTimeMs, 6, 33);
     prevTimeMs = nowMs;
-
     const dt = dtMs / 1000;
     time += dt;
 
     updatePerformance(dtMs);
-    updateState(dt);
+    // Scaled dt is a clean slow motion: trails lengthen in time as the gas slows.
+    physics.step(dt * MOTION_SCALE, quality.particles);
+    const view = viewState(dt);
 
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-    const lanePulse = 0.5 + 0.5 * Math.sin(time * 3.2 * quality.lanePulseSpeed * MOTION_SCALE);
-    const shipThrust = clamp(Math.hypot(shipVel.x, shipVel.y) * 4.8, 0.1, 1.4);
-
-    drawState.time = time;
-    drawState.dt = dt;
-    drawState.camOffset = camOffset;
-    drawState.camTilt = camTilt;
-    drawState.profile = quality;
-    drawState.qualityKey = qualityKey;
-    drawState.shipPos = shipPos;
-    drawState.shipRot = shipRot;
-    drawState.lanePulse = lanePulse;
-    drawState.shipThrust = shipThrust;
-    drawState.lane = lane;
-
-    if (starfieldModule) {
-      starfieldModule.draw(drawState);
-    }
-    canyonModule.draw(drawState);
-    if (shipModule) {
-      shipModule.draw(drawState);
+    if (bloom) {
+      bloom.resize(canvas.width, canvas.height, quality.bloomLevels);
+      bloom.beginScene();
+      scene.draw(view);
+      bloom.present(view.fade);
+    } else {
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      scene.draw(view);
     }
 
     animationId = requestAnimationFrame(render);
+  }
+
+  function start() {
+    prevTimeMs = performance.now();
+    if (!isPaused) animationId = requestAnimationFrame(render);
   }
 
   function setupEvents() {
@@ -1340,42 +383,35 @@ void main() {
     canvas.addEventListener('webglcontextlost', (event) => {
       event.preventDefault();
       contextLost = true;
+      scene = null;
+      bloom = null;
       if (animationId) {
         cancelAnimationFrame(animationId);
         animationId = null;
       }
     }, false);
 
+    // The wasm state and the lens table survive a lost context; only GPU resources are rebuilt.
     canvas.addEventListener('webglcontextrestored', () => {
       contextLost = false;
       hasFallback = false;
       document.body.classList.remove('webgl-fallback');
-
-      if (!initializeScene()) {
-        setFallback();
-        return;
-      }
-
-      prevTimeMs = performance.now();
-      if (!isPaused) {
-        animationId = requestAnimationFrame(render);
-      }
+      if (initializeScene()) start();
     }, false);
   }
 
-  // Page-facing API. setLaneAccent(null) returns the trench to its default palette.
-  window.setLaneAccent = function setLaneAccent(a, b, boost = 1.55) {
-    const ok = Array.isArray(a) && Array.isArray(b) && a.length === 3 && b.length === 3;
-    laneTarget.a = ok ? a.slice() : LANE_DEFAULT_A.slice();
-    laneTarget.b = ok ? b.slice() : LANE_DEFAULT_B.slice();
-    laneTarget.boost = ok ? boost : 1;
+  // Page-facing API. setSceneAccent(null) returns the disk to its default palette.
+  window.setSceneAccent = function setSceneAccent(warm, hot) {
+    const ok = Array.isArray(warm) && Array.isArray(hot) && warm.length === 3 && hot.length === 3;
+    accentTarget.warm = ok ? warm.slice() : ACCENT_DEFAULT_WARM.slice();
+    accentTarget.hot = ok ? hot.slice() : ACCENT_DEFAULT_HOT.slice();
   };
 
   window.webglStats = function webglStats() {
     return {
       fallback: hasFallback,
       tier: hasFallback ? null : qualityKey,
-      fps: !gl || hasFallback || isPaused || contextLost ? 0 : Math.round(1000 / frameMsEma),
+      fps: !scene || hasFallback || isPaused || contextLost ? 0 : Math.round(1000 / frameMsEma),
       width: canvas.width,
       height: canvas.height,
     };
@@ -1396,9 +432,8 @@ void main() {
       return;
     }
 
-    if (hasFallback || contextLost || !gl) return;
-    prevTimeMs = performance.now();
-    animationId = requestAnimationFrame(render);
+    if (hasFallback || contextLost || !scene) return;
+    start();
   }
 
   window.pauseWebGL = function pauseWebGL() {
@@ -1418,10 +453,15 @@ void main() {
 
   setupEvents();
 
-  if (!initializeScene()) {
-    return;
-  }
+  loadPhysics()
+    .then((loaded) => {
+      physics = loaded;
+      if (initializeScene()) start();
+    })
+    .catch((error) => {
+      console.error('Black hole physics failed to load:', error);
+      setFallback();
+    });
+}
 
-  prevTimeMs = performance.now();
-  animationId = requestAnimationFrame(render);
-})();
+main();

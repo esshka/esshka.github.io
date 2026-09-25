@@ -72,7 +72,7 @@ body.webgl-fallback {
     linear-gradient(180deg, #071022, #03060e);
 }
 
-body.webgl-fallback #canyon {
+body.webgl-fallback #scene {
   display: none;
 }
 
@@ -92,14 +92,14 @@ body.modal-open {
   overflow: hidden;
 }
 
-#canyon {
+#scene {
   position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
   z-index: 0;
   /* No CSS filter here: it would force a fullscreen composite pass every frame.
-     The colour grade lives at the end of the canyon fragment shader instead. */
+     The colour grade lives at the end of the scene fragment shader instead. */
 }
 
 /* ---- Instrument frame: corner brackets drawn on the canopy ---- */

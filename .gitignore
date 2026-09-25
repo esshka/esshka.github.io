@@ -1,1 +1,6 @@
 .DS_Store
+# Rust source for blackhole.wasm lives locally only; the site ships the compiled .wasm.
+blackhole/
+.vscode/
+.lsp/
+
